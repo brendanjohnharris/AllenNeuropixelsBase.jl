@@ -53,8 +53,10 @@ struct Session <: AbstractSession
 end
 export Session
 Session(session_id::Int; kwargs...) = Session(getsessiondata(session_id; kwargs...))
+Session(; params...) = Session(params[:sessionid]);
 getid(S::AbstractSession) = S.pyObject.ecephys_session_id
 getprobes(S::AbstractSession) = CSV.read(IOBuffer(S.pyObject.probes.to_csv()), DataFrame)
+getfile(S::AbstractSession) = datadir*"Ecephys/session_"*string(getid(S))*"/session_"*string(getid(S))*".nwb"
 getprobeids(S::AbstractSession) = getprobes(S)[!, :id]
 getchannels(S::AbstractSession) = CSV.read(IOBuffer(S.pyObject.channels.to_csv()), DataFrame)
 function getchannels(S::AbstractSession, probeid)
@@ -215,7 +217,10 @@ function getstimulustimes(S::Session, stimulusname)
     times = [x..y for (x, y) in eachrow(ts)]
 end
 
-
+function getstimulustimes(; params...)
+    S = Session(params[:sessionid])
+    getstimulustimes(S, params[:stimulus])[params[:epoch]]
+end
 
 # * Stimulus analysis
 

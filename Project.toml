@@ -1,0 +1,7 @@
+name = "AllenNeuropixelsBase"
+uuid = "0b0e28cf-a3af-44db-8bea-1c4507018d35"
+authors = ["brendanjohnharris <brendanjohnharris@gmail.com> and contributors"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1.6"

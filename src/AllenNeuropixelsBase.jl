@@ -22,25 +22,22 @@ export allensdk, brain_observatory, ecephys, ecephys_project_cache, mouse_connec
 
 
 function __init__()
-    # Conda.pip_interop(true)
-    # Conda.update() # You might need to delete the .julia/conda folder and rebuild PyCall; allensdk has some tricky compatibility requirements.
-    # Conda.pip("install", "allensdk")
     PythonCall.pycopy!(pynwb, pyimport("pynwb"))
     PythonCall.pycopy!(allensdk, pyimport("allensdk"))
     PythonCall.pycopy!(brain_observatory, pyimport("allensdk.brain_observatory"))
-    PythonCall.pycopy!(stimulus_info, pyimport("allensdk.brain_observatory.stimulus_info"))
-    PythonCall.pycopy!(ecephys, pyimport("allensdk.brain_observatory.ecephys"))
-    PythonCall.pycopy!(stimulusmapping, pyimport("allensdk.brain_observatory.ecephys.stimulus_analysis.receptive_field_mapping"))
-    PythonCall.pycopy!(ecephys_project_cache, pyimport("allensdk.brain_observatory.ecephys.ecephys_project_cache"))
-    PythonCall.pycopy!(ecephys_project_api, pyimport("allensdk.brain_observatory.ecephys.ecephys_project_api"))
-    PythonCall.pycopy!(ephys_features, pyimport("allensdk.ephys.ephys_features"))
-    PythonCall.pycopy!(brain_observatory_cache, pyimport("allensdk.core.brain_observatory_cache"))
-    PythonCall.pycopy!(mouse_connectivity_cache, pyimport("allensdk.core.mouse_connectivity_cache"))
-    PythonCall.pycopy!(ontologies_api, pyimport("allensdk.api.queries.ontologies_api"))
-    PythonCall.pycopy!(reference_space_cache, pyimport("allensdk.core.reference_space_cache"))
-    PythonCall.pycopy!(reference_space, pyimport("allensdk.core.reference_space"))
+#     PythonCall.pycopy!(stimulus_info, pyimport("allensdk.brain_observatory.stimulus_info"))
+#     PythonCall.pycopy!(ecephys, pyimport("allensdk.brain_observatory.ecephys"))
+#     PythonCall.pycopy!(stimulusmapping, pyimport("allensdk.brain_observatory.ecephys.stimulus_analysis.receptive_field_mapping"))
+#     PythonCall.pycopy!(ecephys_project_cache, pyimport("allensdk.brain_observatory.ecephys.ecephys_project_cache"))
+#     PythonCall.pycopy!(ecephys_project_api, pyimport("allensdk.brain_observatory.ecephys.ecephys_project_api"))
+#     PythonCall.pycopy!(ephys_features, pyimport("allensdk.ephys.ephys_features"))
+#     PythonCall.pycopy!(brain_observatory_cache, pyimport("allensdk.core.brain_observatory_cache"))
+#     PythonCall.pycopy!(mouse_connectivity_cache, pyimport("allensdk.core.mouse_connectivity_cache"))
+#     PythonCall.pycopy!(ontologies_api, pyimport("allensdk.api.queries.ontologies_api"))
+#     PythonCall.pycopy!(reference_space_cache, pyimport("allensdk.core.reference_space_cache"))
+#     PythonCall.pycopy!(reference_space, pyimport("allensdk.core.reference_space"))
 
-    ecephys_project_cache.EcephysProjectCache.from_warehouse(manifest=ecephysmanifest)
+#     ecephys_project_cache.EcephysProjectCache.from_warehouse(manifest=ecephysmanifest)
 end
 
 function setdatadir(datadir::String)
@@ -80,16 +77,16 @@ function loaddataframe(file, dir=datadir)::DataFrame
 end
 export convertdataframe
 
-include("./EcephysCache.jl")
-include("./BrainObservatory.jl")
-include("./VisualBehaviour.jl")
-include("./SparseDimArray.jl")
-include("./LFP.jl")
-include("./SpikeBand.jl")
-include("./MouseConnectivityCache.jl")
-include("./Ontologies.jl")
-include("./ReferenceSpace.jl")
-include("./NWBSession.jl")
-include("./Behaviour.jl")
+# include("./EcephysCache.jl")
+# include("./BrainObservatory.jl")
+# include("./VisualBehaviour.jl")
+# include("./SparseDimArray.jl")
+# include("./LFP.jl")
+# include("./SpikeBand.jl")
+# include("./MouseConnectivityCache.jl")
+# include("./Ontologies.jl")
+# include("./ReferenceSpace.jl")
+# include("./NWBSession.jl")
+# include("./Behaviour.jl")
 
 end

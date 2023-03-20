@@ -1,5 +1,7 @@
 import AllenNeuropixelsBase as ANB
-using AllenNeuropixelsBase.NWBS3
+using Pkg
+Pkg.add(url="https://github.com/brendanjohnharris/NWBS3.jl")
+using NWBS3
 using Test
 using AllenNeuropixelsBase.DataFrames
 

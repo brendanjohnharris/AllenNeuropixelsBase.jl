@@ -7,7 +7,6 @@
 *.mat
 *.parquet
 .CondaPkg/
-Manifest.toml
 /data/
 /docs/build/
 Artifacts.toml

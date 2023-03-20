@@ -47,6 +47,7 @@ end
 export getsessiondata
 
 abstract type AbstractSession end
+export AbstractSession
 
 struct Session <: AbstractSession
     pyObject

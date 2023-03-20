@@ -89,6 +89,7 @@ include("./SpikeBand.jl")
 include("./MouseConnectivityCache.jl")
 include("./Ontologies.jl")
 include("./ReferenceSpace.jl")
+include("./NWBSession.jl")
 include("./Behaviour.jl")
 
 end

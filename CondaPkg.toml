@@ -7,4 +7,4 @@ fsspec = ""
 requests = ""
 
 [pip.deps]
-allensdk = "@https://github.com/brendanjohnharris/AllenSDK/archive/refs/tags/v2.18.zip"
+allensdk = "@https://github.com/brendanjohnharris/AllenSDK/archive/refs/tags/v2.19.zip"

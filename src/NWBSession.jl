@@ -9,7 +9,7 @@ end
 struct S3Session <: AbstractNWBSession
     url
     file
-    S3Session(url::String, file=s3open(url, "rb")) = New(url, file)
+    S3Session(url::String, file=s3open(url, "rb")) = new(url, file)
 end
 
 function getfile(S::AbstractNWBSession)

@@ -6,7 +6,8 @@ using Test
 using AllenNeuropixelsBase.DataFrames
 
 @testset "NWBS3.jl" begin
-    s3open("https://visual-behavior-neuropixels-data.s3.us-west-2.amazonaws.com/visual-behavior-neuropixels/behavior_ecephys_sessions/1044385384/ecephys_session_1044385384.nwb")
+    f, io = s3open("https://visual-behavior-neuropixels-data.s3.us-west-2.amazonaws.com/visual-behavior-neuropixels/behavior_ecephys_sessions/1044385384/ecephys_session_1044385384.nwb")
+    s3close(io)
 end
 
 @testset "Visual Behaviour" begin
@@ -15,5 +16,7 @@ end
     sessionid = st[2, :ecephys_session_id]
     session = @test_nowarn ANB.VisualBehaviour.Session(sessionid)
 end
+
+s3clear()
 
 return

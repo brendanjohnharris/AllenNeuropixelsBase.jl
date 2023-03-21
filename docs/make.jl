@@ -17,3 +17,7 @@ makedocs(;
         "Home" => "index.md",
     ],
 )
+
+deploydocs(
+    repo = "github.com/brendanjohnharris/AllenNeuropixelsBase.jl.git",
+)

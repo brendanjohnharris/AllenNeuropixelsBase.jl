@@ -1,6 +1,8 @@
 using NWBS3
 export AbstractNWBSession, NWBSession, S3Session
 
+sessionfromnwb(S) = behavior_ecephys_session.BehaviorEcephysSession.from_nwb(S)
+
 abstract type AbstractNWBSession <: AbstractSession end
 
 struct NWBSession <: AbstractNWBSession
@@ -10,20 +12,20 @@ mutable struct S3Session <: AbstractNWBSession
     url
     file
     io
-    probefiles
-    probefileios
-    function S3Session(url::String, file, io, probefiles=(), probefileios=())
-        S = new(url, file, io, probefiles, probefileios)
-        f(S::S3Session) = @async s3close.([S.io, probefileios...])
+    pyObject
+    function S3Session(url::String, file, io, pyobject=())
+        S = new(url, file, io, pyobject)
+        f(S::S3Session) = @async s3close(S.io)
         finalizer(f, S)
     end
 end
+initialize!(S::AbstractNWBSession) = (S.pyobject = sessionfromnwb(S.file); nothing) # Can take absolutely forever since dataframes suck
 S3Session(url::String) = S3Session(url, s3open(url)...)
 
 getid(S::AbstractNWBSession) = getfile(S).identifier |> string |> Meta.parse
-getprobes(S::AbstractNWBSession) = Dict(getfile(S).ec_electrode_groups)
-getprobeids(S::AbstractNWBSession) = Dict(first(s) => pyconvert(Int, last(s).probe_id) for s in getprobes(S))
-getprobefiles(S::AbstractNWBSession) = Dict(getfile(S).ec_electrode_groups)
+# getprobes(S::AbstractNWBSession) = Dict(getfile(S).ec_electrode_groups)
+# getprobeids(S::AbstractNWBSession) = Dict(first(s) => pyconvert(Int, last(s).probe_id) for s in getprobes(S))
+# getprobefiles(S::AbstractNWBSession) = Dict(getfile(S).ec_electrode_groups)
 # getchannels() = manifest["project_metadata"]["channels.csv"] |> url2df
 
 function getfile(S::AbstractNWBSession)

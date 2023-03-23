@@ -156,19 +156,19 @@ end
 export getallunitmetrics
 
 function getunitanalysismetrics(session::AbstractSession; annotate=true, filter_by_validity=true, kwargs...)
-    str = ecephyscache().get_unit_analysis_metrics_for_session(getid(session); annotate, filter_by_validity, kwargs...).to_csv()
-    CSV.read(IOBuffer(str), DataFrame);
+    str = ecephyscache().get_unit_analysis_metrics_for_session(getid(session); annotate, filter_by_validity, kwargs...)
+    PyPandasDataFrame(str) |> DataFrame
 end
 
 
 function getstimuli(S::Session)
-    str =  S.pyObject.stimulus_presentations.to_csv()
-    CSV.read(IOBuffer(str), DataFrame)
+    str =  S.pyObject.stimulus_presentations
+    PyPandasDataFrame(str) |> DataFrame
 end
 
 function getunitmetrics(session::AbstractSession)
-    str = session.pyObject.units.to_csv()
-    CSV.read(IOBuffer(str), DataFrame);
+    str = session.pyObject.units
+    PyPandasDataFrame(str) |> DataFrame
 end
 
 function getstimulusname(session::AbstractSession, time::Number; stimulus_table=getstimuli(session))
@@ -204,7 +204,7 @@ end
 
 function getepochs(S::Session)
     p = S.pyObject.get_stimulus_epochs() # Why is this so slow
-    CSV.read(IOBuffer(p.to_csv()), DataFrame);
+    PyPandasDataFrame(p) |> DataFrame
 end
 
 function getepochs(S::Session, stimulusname)

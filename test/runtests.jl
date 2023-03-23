@@ -13,20 +13,10 @@ end
     @test st isa DataFrame
     sessionid = st[2, :ecephys_session_id]
     session = @test_nowarn ANB.VisualBehavior.Session(sessionid)
+    ANB.initialize!(session)
 
-    probes = @test_nowarn ANB.getprobes(session)
-
-    probeid = 1044506933
-    file = ANB.VisualBehavior.getprobefile(session, probeid)
-    # LFP = @test_nowarn AN.formatlfp();
-
-
-    url, _ = s3open(ANB.VisualBehavior.getsessionfile(sessionid))
-
-
-    # This is easier
-
-
+    @test_nowarn ANB.listprobes(session)
+    @test_nowarn getepochs(session)
 end
 
 s3clear()

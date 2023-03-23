@@ -1,7 +1,5 @@
 import AllenNeuropixelsBase as ANB
-using Pkg
-Pkg.add(url="https://github.com/brendanjohnharris/NWBS3.jl")
-using NWBS3
+using AllenNeuropixelsBase.NWBS3
 using Test
 using AllenNeuropixelsBase.DataFrames
 
@@ -11,10 +9,24 @@ using AllenNeuropixelsBase.DataFrames
 end
 
 @testset "Visual Behaviour" begin
-    st = @test_nowarn ANB.VisualBehaviour.getsessiontable()
+    st = @test_nowarn ANB.VisualBehavior.getsessiontable()
     @test st isa DataFrame
     sessionid = st[2, :ecephys_session_id]
-    session = @test_nowarn ANB.VisualBehaviour.Session(sessionid)
+    session = @test_nowarn ANB.VisualBehavior.Session(sessionid)
+
+    probes = @test_nowarn ANB.getprobes(session)
+
+    probeid = 1044506933
+    file = ANB.VisualBehavior.getprobefile(session, probeid)
+    # LFP = @test_nowarn AN.formatlfp();
+
+
+    url, _ = s3open(ANB.VisualBehavior.getsessionfile(sessionid))
+
+
+    # This is easier
+
+
 end
 
 s3clear()

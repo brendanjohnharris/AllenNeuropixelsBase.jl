@@ -1,4 +1,5 @@
-module VisualBehaviour
+module VisualBehavior
+using ..AllenNeuropixelsBase
 import ..AllenNeuropixelsBase as ANB
 using NWBS3
 using DataFrames
@@ -6,8 +7,8 @@ using Downloads
 using JSON
 import NWBS3.url2df
 
-const visualbehaviour = "https://visual-behavior-neuropixels-data.s3.us-west-2.amazonaws.com/"
-const visualbehaviourbehaviour = visualbehaviour * "visual-behavior-neuropixels/"
+const visualbehavior = "https://visual-behavior-neuropixels-data.s3.us-west-2.amazonaws.com/"
+const visualbehaviorbehaviour = visualbehavior * "visual-behavior-neuropixels/"
 
 """
     getmanifesturl(manifest_version="0.4.0")
@@ -22,7 +23,7 @@ Other manifest version numbers can be identified here: https://s3.console.aws.am
 """
 function getmanifesturl(manifest_version="0.4.0")
     object_key = "manifests/visual-behavior-neuropixels_project_manifest_v$manifest_version.json"
-    return visualbehaviourbehaviour * object_key
+    return visualbehaviorbehaviour * object_key
 end
 
 function getmanifest(args...)
@@ -74,6 +75,9 @@ end
 
 const manifest = datapaths()
 
+getprobes() = manifest["project_metadata"]["probes.csv"] |> url2df
+getchannels() = manifest["project_metadata"]["channels.csv"] |> url2df
+
 const sources = Dict(
     :Allen_neuropixels_visual_behaviour => "https://visual-behavior-neuropixels-data.s3.us-west-2.amazonaws.com"
 )
@@ -82,9 +86,6 @@ const sources = Dict(
 
 S3Session(session_id::Int, args...; kwargs...) = S3Session(getsessionfile(session_id), args...; kwargs...)
 
-getprobes() = manifest["project_metadata"]["probes.csv"] |> url2df
-
-getchannels() = manifest["project_metadata"]["channels.csv"] |> url2df
 
 """
     getsessionfiles()
@@ -110,6 +111,36 @@ getsessionfile(session_id::Int, args...) = getsessionfiles(args...)["$session_id
 getsessiontable() = manifest["project_metadata"]["ecephys_sessions.csv"] |> url2df
 
 
+function getprobes(session::AbstractNWBSession)
+    probes = VisualBehavior.getprobes()
+    return subset(probes, :ecephys_session_id => ByRow(==(ANB.getid(session))))
+end
+
+function getprobefiles()
+    files = manifest["behavior_ecephys_sessions"]
+    sessionids = keys(files)
+    D = deepcopy(files)
+    for s in sessionids
+        subfiles = D[s]
+        subfile = findfirst(subfiles) do f
+            occursin("ecephys_session_$s", f)
+        end
+        delete!(subfiles, subfile)
+    end
+    return D
+end
+getprobefiles(S::AbstractNWBSession) = getprobefiles()[string(ANB.getid(S))]
+
+
+function getprobefile(session::AbstractNWBSession, name::AbstractString)
+    files = getprobefiles(session)
+    return files["probe_$(name)_lfp.nwb"]
+end
+
+getprobefile(session::AbstractNWBSession, probeid::Int) = getprobefile(session, first(subset(getprobes(session), :ecephys_probe_id => ByRow(==(probeid))).name))
+
+
+
 # * The goal is now to copy all of the convenience functions in AllenAttention.jl to here...
 
 # Will just need to overload getlfp and getspikes, since we can use the allensdk to get all the session metadata and such.
@@ -124,3 +155,4 @@ Session(sessionid::Int) = sessionid |> getsessionfile |> ANB.S3Session
 # end
 
 end
+export VisualBehavior

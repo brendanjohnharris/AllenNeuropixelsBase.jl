@@ -11,13 +11,33 @@ end
 @testset "Visual Behaviour" begin
     st = @test_nowarn ANB.VisualBehavior.getsessiontable()
     @test st isa DataFrame
-    sessionid = st[2, :ecephys_session_id]
-    session = @test_nowarn ANB.VisualBehavior.Session(sessionid)
+    session_id = st[2, :ecephys_session_id]
+    url = ANB.VisualBehavior.getsessionfile(session_id)
+    file, io = s3open(url)
+    ANB.behavior_ecephys_session.BehaviorEcephysSession.from_nwb(file)
+    session = ANB.VisualBehavior.Session(session_id)
     ANB.initialize!(session)
 
+    ANB.getprobes(session)
+    ANB.getprobeids(session)
     @test_nowarn ANB.listprobes(session)
-    @test_nowarn getepochs(session)
+    @test_nowarn ANB.getepochs(session)
+
 end
+
+@testset "Base" begin
+    params = (;
+        sessionid = 1044385384,
+        stimulus = "gabors",
+        probeid = 769322751, # VISl # 769322749, # VISp #
+        structure = "VISp",
+        epoch = 1,
+        surrogate = AP(1250),
+        pass = (1, 100)
+)
+    formatlfp(; sessionid=757216464, probeid=769322749, stimulus="gabors", structure="VISp", epoch=1, kwargs...)
+end
+
 
 s3clear()
 

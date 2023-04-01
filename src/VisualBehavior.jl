@@ -154,5 +154,9 @@ Session(sessionid::Int) = sessionid |> getsessionfile |> ANB.S3Session
 # function getlfp(session::S3Session, probeid::Int; channels=getlfpchannels(session, probeid), times=ClosedInterval(extrema(getlfptimes(session, probeid))...), inbrain=false)
 # end
 
+# VisualBehaviorNeuropixelsProjectCache = ANB.behavior_project_cache.behavior_neuropixels_project_cache.VisualBehaviorNeuropixelsProjectCache
+# VisualBehaviorNeuropixelsProjectCache.from_s3_cache(mktempdir())
+
+
 end
 export VisualBehavior

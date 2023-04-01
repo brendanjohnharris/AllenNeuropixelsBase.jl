@@ -13,13 +13,13 @@ mutable struct S3Session <: AbstractNWBSession
     file
     io
     pyObject
-    function S3Session(url::String, file, io, pyobject=())
-        S = new(url, file, io, pyobject)
+    function S3Session(url::String, file, io, pyObject=())
+        S = new(url, file, io, pyObject)
         f(S::S3Session) = @async s3close(S.io)
         finalizer(f, S)
     end
 end
-initialize!(S::AbstractNWBSession) = (S.pyobject = sessionfromnwb(S.file); nothing) # Can take absolutely forever since dataframes suck
+initialize!(S::AbstractNWBSession) = (S.pyObject = sessionfromnwb(S.file); nothing) # Can take absolutely forever since dataframes suck
 S3Session(url::String) = S3Session(url, s3open(url)...)
 
 getid(S::AbstractNWBSession) = getfile(S).identifier |> string |> Meta.parse
@@ -39,5 +39,25 @@ function getlfpchannels(session::S3Session, probeid)
     return channels
 end
 
+# getprobes(S::AbstractNWBSession) = S.pyObject.get_probes_obj().to_dataframe() |> PyPandasDataFrame |> DataFrame
+function getsessionunits(session::AbstractNWBSession)
+    units = session.pyObject.get_units() |> PyPandasDataFrame |> DataFrame
+end
+
+function py2df(p)
+    df = p |> PyPandasDataFrame
+    df = df |> DataFrame
+    # if hasfield(p, :index)
+        index = p.index
+        index = pyconvert(Vector{Int64}, index)
+        df[!, string(p.index.name)] = index
+    # end
+    return df[!, [end, (1:size(df, 2)-1)...]]
+end
+
+getid(S::AbstractNWBSession) = S.pyObject.behavior_session_id
+getprobes(S::AbstractNWBSession) = py2df(S.pyObject.probes)
+getchannels(S::AbstractNWBSession) = py2df(S.pyObject.get_channels())
+getepochs(S::AbstractNWBSession) = S.pyObject.stimulus_presentations.groupby("stimulus_block").head(1) |> py2df
 
 Base.Dict(p::Py) = pyconvert(Dict, p)

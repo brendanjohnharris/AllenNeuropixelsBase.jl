@@ -13,28 +13,36 @@ begin
 	Page()
 end
 
-# ╔═╡ 0a622047-c238-49c3-bdf0-3248d0f0d261
-# Just for me
+# ╔═╡ c445ccf4-cf10-43b9-9c01-4051abc400ba
 begin
-	using Revise
-	cd("../")
-	Pkg.activate()
-	Pkg.develop(path="./AllenNeuropixelsBase")
-	cd("./AllenNeuropixelsBase")
 	Pkg.activate("./")
+	Pkg.add(url="https://github.com/brendanjohnharris/NWBS3.jl#main")
+	Pkg.add(url="https://github.com/brendanjohnharris/AllenNeuropixelsBase.jl#main")
+	# Pkg.add("WGLMakie")
+	Pkg.add("DataFrames")
+	Pkg.add("Statistics")
+	Pkg.add("FileIO")
 end
 
-# ╔═╡ 2e3d037c-932d-4d5a-afdb-351e836bdfb2
-using WGLMakie
-
 # ╔═╡ 79b92c17-cc5f-4ca2-8b08-f6015729a9a9
-using DataFrames
+using DataFrames 
 
 # ╔═╡ 1a3eaeb7-db19-4bc3-b61a-84dd9caad009
 using Statistics
 
 # ╔═╡ c1397e8e-3ac2-4f49-8d88-cc1400a3b93e
 using FileIO
+
+# ╔═╡ 0a622047-c238-49c3-bdf0-3248d0f0d261
+# Just for me
+# begin
+# 	using Revise
+# 	cd("../../")
+# 	Pkg.activate()
+# 	Pkg.develop(path="./AllenNeuropixelsBase")
+# 	cd("./AllenNeuropixelsBase")
+# 	Pkg.activate("./")
+# end
 
 # ╔═╡ 766a8af5-4c89-4fe7-883d-d960ef91edfd
 md"""
@@ -46,7 +54,7 @@ _Accessing the Allen Neuropixels visual behavior dataset in Julia_
 md"""
 ## Background
 
-Details on neuropixels and the visual coding dataset can be found in the Allen SDK [docs](https://allensdk.readthedocs.io/en/latest/visual_coding_neuropixels.html), the [white-paper](https://dl.dropbox.com/s/tav6rft6iyd173k/neuropixels_visual_coding_-_white_paper_v10.pdf) or the [cheat-sheet](https://dl.dropbox.com/s/9v1x9eibmtb8fwg/neuropixels_cheat_sheet_nov_2019.pdf)
+Details on neuropixels and the visual coding dataset can be found in the Allen SDK [docs](https://allensdk.readthedocs.io/en/latest/visual_behavior_neuropixels.html) or the [white-paper](https://brainmapportal-live-4cc80a57cd6e400d854-f7fdcae.divio-media.net/filer_public/f7/06/f706855a-a3a1-4a3a-a6b0-3502ad64680f/visualbehaviorneuropixels_technicalwhitepaper.pdf).
 """
 
 # ╔═╡ f9ac9f6e-f129-4542-81a8-36e6cef9857a
@@ -54,20 +62,14 @@ md"## Required packages"
 
 # ╔═╡ c48bd78e-aab0-49c0-b137-567c208b8aa1
 md"""
-Interfacing with the Python [Allen SDK](https://github.com/AllenInstitute/AllenSDK) is handled by the [AllenNeuropixels](https://github.com/brendanjohnharris/AllenNeuropixels.jl) package, which uses the [Makie](https://github.com/JuliaPlots/Makie.jl) package for plotting (with GPU acceleration and interactivity). We will use the WGLMakie as the backend, as well as DataFrames and Statistics for working with tables.
+Interfacing with the Python [Allen SDK](https://github.com/AllenInstitute/AllenSDK) is handled by the [AllenNeuropixelsBase](https://github.com/brendanjohnharris/AllenNeuropixelsBase.jl) package. We will use the WGLMakie for plots, as well as DataFrames and Statistics for working with tables.
 """
 
-# ╔═╡ c445ccf4-cf10-43b9-9c01-4051abc400ba
-#begin
-#	Pkg.add(url="https://github.com/brendanjohnharris/AllenNeuropixels.jl#main")
-#	Pkg.add("WGLMakie")
-#	Pkg.add("DataFrames")
-#	Pkg.add("Statistics")
-#	Pkg.add("FileIO")
-#end
-
 # ╔═╡ d8fd4541-08a5-4ace-a998-769771c976e8
-import AllenNeuropixelsBase as ANB
+import AllenNeuropixelsBase as ANB 
+
+# ╔═╡ 2e3d037c-932d-4d5a-afdb-351e836bdfb2
+# using WGLMakie
 
 # ╔═╡ 5bfaefae-11a5-4567-8b83-d583f03a75a8
 md"""
@@ -78,7 +80,7 @@ The entire neuropixels visual coding dataset contains dozens of sessions and is 
 """
 
 # ╔═╡ 754f94e0-ccb2-4dc0-a534-ae94dd02bc02
-# session_table = AN.getsessiontable()
+session_table = ANB.VisualBehavior.getsessiontable()
 
 # ╔═╡ a2f81f74-36ed-42d4-89d5-828327c67318
 md"""We'll pick a session that has six probes:"""
@@ -102,27 +104,27 @@ function targetintersections(sessionid)
 end;
 
 # ╔═╡ 99fe41d6-661d-4b9f-a853-2f32ace53d72
-md"""
-We can filter down sessions in a few more ways. Firstly, the visaul coding data is divided into two stimulus sets. To summuraise the white paper:
-- The **Brain Observatory 1.1** stimulus set:
-    - Gabor patches appearing randomly on a 9 x 9 grid
-    - Dark or light flashes
-    - Drift gratings in 8 directions and 5 temporal frequencies, with 15 repeats per condition
-    - Static gratings at 6 orientations, 5 spatial frequencies, and 4 phases
-    - 118 natural images
-    - Two natural movies from Touch of Evil; a 30 second clips repeated 20 times and a 120 second clip repeated 10 times
+# md"""
+# We can filter down sessions in a few more ways. Firstly, the visaul coding data is divided into two stimulus sets. To summuraise the white paper:
+# - The **Brain Observatory 1.1** stimulus set:
+#     - Gabor patches appearing randomly on a 9 x 9 grid
+#     - Dark or light flashes
+#     - Drift gratings in 8 directions and 5 temporal frequencies, with 15 repeats per condition
+#     - Static gratings at 6 orientations, 5 spatial frequencies, and 4 phases
+#     - 118 natural images
+#     - Two natural movies from Touch of Evil; a 30 second clips repeated 20 times and a 120 second clip repeated 10 times
 
 
-- The **Functional Connectivity** stimulus set:
-    - Gabor patches
-    - Dark or light flashes
-    - Drift gratings in 4 directions and one temporal frequency with 75-80 repeats
-    - Drift gratings in 4 directions and 9 contrasts
-    - One natural movie shown 60 times plus 20 repeats of a temporally shuffled version
-    - A dot motion stimulus of approximately 200 white dots on a gray background moving at one of 7 speeds in four different directions
+# - The **Functional Connectivity** stimulus set:
+#     - Gabor patches
+#     - Dark or light flashes
+#     - Drift gratings in 4 directions and one temporal frequency with 75-80 repeats
+#     - Drift gratings in 4 directions and 9 contrasts
+#     - One natural movie shown 60 times plus 20 repeats of a temporally shuffled version
+#     - A dot motion stimulus of approximately 200 white dots on a gray background moving at one of 7 speeds in four different directions
 
-In summary, the Brain Observatory dataset contains a greater variety of stimuli but a smaller number of repeats than the Functional Connectivity dataset. **We'll look at sessions in the Brain Observatory dataset.**
-"""
+# In summary, the Brain Observatory dataset contains a greater variety of stimuli but a smaller number of repeats than the Functional Connectivity dataset. **We'll look at sessions in the Brain Observatory dataset.**
+# """
 
 # ╔═╡ 82ce6d0f-b60b-41f2-bdce-c6ecf545bf65
 md"""
@@ -132,20 +134,20 @@ Next, we can inspect the unit quality metrics of each session. Three metric crit
 - `isi_violations_maximum = 0.5`: Limits the number of units that record from multiple neurons. Inter-spike interval (ISI) violations are detections of spikes that occur during the typical refractory period of a single neuron, so are likely to originate from a second neuron.
 
 
-To access a dataframe of metrics for the brain observatory dataset with the default metric filters:
+To access a dataframe of metrics:
 """
 
 # ╔═╡ 5d47cb91-d8c7-41df-9778-c9a77266ba93
 # This can take a while
-# metrics = AN.getunitanalysismetricsbysessiontype("functional_connectivity")
+metrics = ANB.VisualBehavior.getunits()
 
 # ╔═╡ 7d00cd72-a2c0-45a9-b777-b347286f7390
 md"Some session-level metrics are:"
 
 # ╔═╡ fd03139c-4bd1-4f26-a8c3-46c3feefd9c5
-# session_metrics = combine(groupby(metrics, :ecephys_session_id),
-# 		:ecephys_session_id => numprobes∘unique => :num_probes,
-# 		:ecephys_session_id => targetintersections∘unique => :target_intersections,
+# session_metrics = combine(groupby(metrics, :behavior_session_id),
+# 		:behavior_session_id => numprobes∘unique => :num_probes,
+# 		:behavior_session_id => targetintersections∘unique => :target_intersections,
 # 		:has_lfp_data=>all,
 # 		:genotype => (x->all(isequal.(x, ("wt/wt",)))) => :is_wt,
 # 		:max_drift=>median∘skipmissing,
@@ -247,9 +249,9 @@ There are still channels with little signal outside of the brain and at the very
 
 # ╔═╡ Cell order:
 # ╠═98c9bbd2-aac5-4c90-ac0c-d8d935f5cdaf
-# ╠═0a622047-c238-49c3-bdf0-3248d0f0d261
+# ╟─0a622047-c238-49c3-bdf0-3248d0f0d261
 # ╟─766a8af5-4c89-4fe7-883d-d960ef91edfd
-# ╠═bea5de79-6e8a-42d8-ab76-bae8e3c23747
+# ╟─bea5de79-6e8a-42d8-ab76-bae8e3c23747
 # ╟─f9ac9f6e-f129-4542-81a8-36e6cef9857a
 # ╟─c48bd78e-aab0-49c0-b137-567c208b8aa1
 # ╠═c445ccf4-cf10-43b9-9c01-4051abc400ba
@@ -264,7 +266,7 @@ There are still channels with little signal outside of the brain and at the very
 # ╠═efd3ef52-4acb-4ffd-b794-1dfc4d9819c8
 # ╟─e30e349c-6ad7-402b-90d1-7720b85a9c2c
 # ╠═d2d20884-0fcd-4ac7-8a14-dbf936445c3b
-# ╟─99fe41d6-661d-4b9f-a853-2f32ace53d72
+# ╠═99fe41d6-661d-4b9f-a853-2f32ace53d72
 # ╟─82ce6d0f-b60b-41f2-bdce-c6ecf545bf65
 # ╠═5d47cb91-d8c7-41df-9778-c9a77266ba93
 # ╟─7d00cd72-a2c0-45a9-b777-b347286f7390

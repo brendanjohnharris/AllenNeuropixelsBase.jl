@@ -109,6 +109,7 @@ end
 getsessionfile(session_id::Int, args...) = getsessionfiles(args...)["$session_id"]
 
 getsessiontable() = manifest["project_metadata"]["ecephys_sessions.csv"] |> url2df
+getunits() = manifest["project_metadata"]["units.csv"] |> url2df
 
 
 function getprobes(session::AbstractNWBSession)

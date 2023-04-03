@@ -25,7 +25,7 @@ begin
 end
 
 # ╔═╡ 79b92c17-cc5f-4ca2-8b08-f6015729a9a9
-using DataFrames 
+using DataFrames
 
 # ╔═╡ 1a3eaeb7-db19-4bc3-b61a-84dd9caad009
 using Statistics
@@ -66,7 +66,7 @@ Interfacing with the Python [Allen SDK](https://github.com/AllenInstitute/AllenS
 """
 
 # ╔═╡ d8fd4541-08a5-4ace-a998-769771c976e8
-import AllenNeuropixelsBase as ANB 
+import AllenNeuropixelsBase as ANB
 
 # ╔═╡ 2e3d037c-932d-4d5a-afdb-351e836bdfb2
 # using WGLMakie
@@ -87,7 +87,7 @@ md"""We'll pick a session that has six probes:"""
 
 # ╔═╡ efd3ef52-4acb-4ffd-b794-1dfc4d9819c8
 function numprobes(sessionid)
-	session_table[session_table[!, :id].==sessionid, :probe_count][1]
+	session_table[session_table[!, :ecephys_session_id].==sessionid, :probe_count][1]
 end
 
 # ╔═╡ e30e349c-6ad7-402b-90d1-7720b85a9c2c
@@ -95,7 +95,7 @@ md"And look for sessions that have probes intersecting the target regions listed
 
 # ╔═╡ d2d20884-0fcd-4ac7-8a14-dbf936445c3b
 function targetintersections(sessionid)
-	s = session_table[session_table.id.==sessionid, :ecephys_structure_acronyms][1]
+	s = session_table[session_table.ecephys_session_id.==sessionid, :structure_acronyms][1]
 	targets = ["VISp", "VISl", "VISrl", "VISal", "VISpm", "VISam", "CA1", "CA3", "DG", "SUB", "ProS", "LGd", "LP", "APN"];
 	structures = eachmatch(r"'(.*?)'", s)
 	structures = [replace(x.match, r"'"=>s"") for x ∈ structures]
@@ -141,20 +141,25 @@ To access a dataframe of metrics:
 # This can take a while
 metrics = ANB.VisualBehavior.getunits()
 
+# ╔═╡ c62a118e-713e-424f-9420-f310131c7018
+sessionmetrics = innerjoin(session_table, metrics, on=:ecephys_session_id)
+
+# ╔═╡ d3064ff9-798f-4469-9ac5-43b94c9e9a92
+setindex!.([sessionmetrics], missing, findall(Matrix(sessionmetrics .== "")))
+
 # ╔═╡ 7d00cd72-a2c0-45a9-b777-b347286f7390
 md"Some session-level metrics are:"
 
 # ╔═╡ fd03139c-4bd1-4f26-a8c3-46c3feefd9c5
-# session_metrics = combine(groupby(metrics, :behavior_session_id),
-# 		:behavior_session_id => numprobes∘unique => :num_probes,
-# 		:behavior_session_id => targetintersections∘unique => :target_intersections,
-# 		:has_lfp_data=>all,
-# 		:genotype => (x->all(isequal.(x, ("wt/wt",)))) => :is_wt,
-# 		:max_drift=>median∘skipmissing,
-# 		:d_prime=>median∘skipmissing,
-# 		:isolation_distance=>median∘skipmissing,
-# 		:silhouette_score=>median∘skipmissing,
-# 		:snr=>median∘skipmissing)
+session_metrics = combine(groupby(sessionmetrics, :ecephys_session_id),
+		:ecephys_session_id => numprobes∘unique => :num_probes,
+		:ecephys_session_id => targetintersections∘unique => :target_intersections,
+		:genotype => (x->all(isequal.(x, ("wt/wt",)))) => :is_wt,
+		:max_drift=>median∘skipmissing,
+		:d_prime=>median∘skipmissing,
+		:isolation_distance=>median∘skipmissing,
+		:silhouette_score=>median∘skipmissing,
+		:snr=>median∘skipmissing)
 
 # ╔═╡ 51eccd32-d4e9-4330-99f5-fca0f8534e43
 md"""
@@ -162,12 +167,16 @@ Of particular importance are the first five columns. The ideal session will have
 """
 
 # ╔═╡ 927605f4-0b59-4871-a13f-420aadedd487
-# oursession = subset(session_metrics,
-# 						:num_probes => ByRow(==(6)),
-# 						:target_intersections => ByRow(>(0.9)),
-# 						:is_wt => ByRow(==(true)),
-# 						:has_lfp_data_all => ByRow(==(true)),
-# 						:max_drift_median_skipmissing => ByRow(<(25.0)))
+oursession = subset(session_metrics,
+						:target_intersections => ByRow(>(0.85)),
+						:is_wt => ByRow(==(true)),
+						:max_drift_median_skipmissing => ByRow(<(99)))
+
+# ╔═╡ 5973ddbe-f839-44d8-af08-46b1813e8750
+sort!(oursession, :max_drift_median_skipmissing)
+
+# ╔═╡ 395a90c4-fe98-49bc-9883-d4278cd38bae
+session_id = oursession[1, :].ecephys_session_id
 
 # ╔═╡ 23d8fad0-5c51-4056-8df3-fd850db7b560
 md"""
@@ -185,7 +194,7 @@ To mimic the Allen SDK's interface we can use a custom type wrapping a session o
 """
 
 # ╔═╡ c3093ce3-7b73-49d4-8ce8-aaea4b49b685
-# session = AN.Session(oursession.ecephys_session_id[1])
+session = ANB.VisualBehavior.Session(session_id); ANB.initialize!(session)
 
 # ╔═╡ 3ec0b209-2287-4fcf-be04-688bd4fb327a
 # sessionid = AN.getid(session)
@@ -194,13 +203,13 @@ To mimic the Allen SDK's interface we can use a custom type wrapping a session o
 md"The six probes for this session are:"
 
 # ╔═╡ c77034a4-a6b4-4970-bdc8-9a6b30cbb687
-# probes = AN.getprobes(session)
+probes = ANB.getprobes(session)
 
 # ╔═╡ 12d66773-c567-4e5a-a119-4fa5e06ec98c
 md"We are only interested in channels located within the brain, so the `missing` structure ids are removed and the channels for this session become:"
 
 # ╔═╡ 5f944e90-5232-4508-9a3a-c678e6804104
-# channels = subset(AN.getchannels(session), :ecephys_structure_id=>ByRow(!ismissing))
+channels = subset(ANB.getchannels(session), :structure_acronym=>ByRow(!=("root")))
 
 # ╔═╡ 423edd0f-60ed-4d9a-b84a-47e47e560ae2
 md"""
@@ -217,13 +226,33 @@ We can then plot the probe locations on the reference atlas. Note that the color
 # @html_str read(download("https://dl.dropbox.com/s/se2doygr56ox8hs/probelocations.html?dl=0"), String)
 # This renders best in firefox
 
+# ╔═╡ bdb2de60-33c6-4d65-967e-92dcc9dafe69
+md"""
+To identify a probe that passes through a given structure:
+"""
+
+# ╔═╡ 4b94916e-2316-442a-bf98-f6cc63ca0591
+structure = "VISp"
+
+# ╔═╡ a61c6563-80ea-451c-82fd-7e6d1fcba752
+probeid = ANB.getprobe(session, structure)
+
 # ╔═╡ b9c2e65c-03cf-45d7-9309-b601f486c62b
 md"""
 The LFP data for our probe can be accessed as (warning, it is slow):
 """
 
 # ╔═╡ f0241126-912b-4863-9d4e-917af1426602
-# LFP = AN.getdownsampledlfp(session, probeid)
+params = (;
+    sessionid = ANB.getid(session),
+    stimulus = "spontaneous",
+    probeid,
+    structure,
+    epoch = 1
+)
+
+# ╔═╡ 7ec55a76-e63e-4920-997c-af80610eba73
+LFP = ANB.formatlfp(; params...)
 
 # ╔═╡ d0a301a0-038c-4827-8683-e9d8807186ea
 md"And sorted by depth with:"
@@ -269,10 +298,14 @@ There are still channels with little signal outside of the brain and at the very
 # ╠═99fe41d6-661d-4b9f-a853-2f32ace53d72
 # ╟─82ce6d0f-b60b-41f2-bdce-c6ecf545bf65
 # ╠═5d47cb91-d8c7-41df-9778-c9a77266ba93
+# ╠═c62a118e-713e-424f-9420-f310131c7018
+# ╠═d3064ff9-798f-4469-9ac5-43b94c9e9a92
 # ╟─7d00cd72-a2c0-45a9-b777-b347286f7390
 # ╠═fd03139c-4bd1-4f26-a8c3-46c3feefd9c5
 # ╟─51eccd32-d4e9-4330-99f5-fca0f8534e43
 # ╠═927605f4-0b59-4871-a13f-420aadedd487
+# ╠═5973ddbe-f839-44d8-af08-46b1813e8750
+# ╠═395a90c4-fe98-49bc-9883-d4278cd38bae
 # ╟─23d8fad0-5c51-4056-8df3-fd850db7b560
 # ╟─99e2e888-c1cf-4370-b1b4-eccc6cbda7de
 # ╟─d552f132-6f90-4aba-9e05-1e7e20929756
@@ -283,9 +316,13 @@ There are still channels with little signal outside of the brain and at the very
 # ╟─12d66773-c567-4e5a-a119-4fa5e06ec98c
 # ╠═5f944e90-5232-4508-9a3a-c678e6804104
 # ╟─423edd0f-60ed-4d9a-b84a-47e47e560ae2
-# ╟─12f8e03b-4ea3-4211-a9b1-f8432dfae3a9
+# ╠═12f8e03b-4ea3-4211-a9b1-f8432dfae3a9
+# ╠═bdb2de60-33c6-4d65-967e-92dcc9dafe69
+# ╠═4b94916e-2316-442a-bf98-f6cc63ca0591
+# ╠═a61c6563-80ea-451c-82fd-7e6d1fcba752
 # ╟─b9c2e65c-03cf-45d7-9309-b601f486c62b
 # ╠═f0241126-912b-4863-9d4e-917af1426602
+# ╠═7ec55a76-e63e-4920-997c-af80610eba73
 # ╟─d0a301a0-038c-4827-8683-e9d8807186ea
 # ╠═a5fca30e-531e-4b09-97e9-a762059dc66c
 # ╠═39ae3db9-b799-4389-80e7-e898e4e88a84

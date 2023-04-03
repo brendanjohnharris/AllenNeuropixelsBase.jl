@@ -85,6 +85,14 @@ function getlfptimes(session::AbstractSession, probeid)
     return times
 end
 
+function getlfptimes(session::AbstractSession, probeid, idxs)
+    getlfptimes(session, probeid)[idxs]
+end
+function getlfptimes(session::AbstractSession, probeid::Int, i::Interval)
+    ts = getlfptimes(session::AbstractSession, probeid::Int)
+    ts = ts[ts .∈ (i,)]
+end
+
 function getlfpchannels(session::AbstractSession, probeid)
     if !isfile(getlfppath(session, probeid))
         downloadlfp(session, probeid)
@@ -112,8 +120,7 @@ function _getlfp(session::AbstractSession, probeid::Int; channelidxs=1:length(ge
 
     f = h5open(path)
 
-    timedata = getlfptimes(session, probeid)
-    timedata = timedata[timeidxs]
+    timedata = getlfptimes(session, probeid, timeidxs)
     dopermute = true
     channelids = getlfpchannels(session, probeid)
     channelids = channelids[channelidxs]
@@ -142,7 +149,7 @@ function _getlfp(session::AbstractSession, probeid::Int; channelidxs=1:length(ge
 end
 
 
-function isinvalidtime(session, probeids=getprobeids(session), times=NaN)
+function isinvalidtime(session::AbstractSession, probeids=getprobeids(session), times=NaN)
     if isempty(session.pyObject.get_invalid_times()) # No invalid times in this session!
         return false
     end
@@ -157,6 +164,9 @@ function isinvalidtime(session, probeids=getprobeids(session), times=NaN)
         isininterval = [any((times .> i[1]) .& (times .< i[2])) for i ∈ intervals]
     end
     return any(probeids .∈ (badprobes,)) & any(isininterval)
+end
+function isinvalidtime(session::AbstractNWBSession, probeids=getprobeids(session), times=NaN)
+    return !pyconvert(Bool, getfile(session).invalid_times == @py None)
 end
 
 """
@@ -226,7 +236,7 @@ function getlfp(session::AbstractSession, probeid::Int, structures::Union{Vector
     if structures isa String
         structures = [structures]
     end
-    channels = subset(getchannels(session, probeid), :ecephys_structure_acronym=>ByRow(==(structures)), skipmissing=true)
+    channels = subset(getchannels(session, probeid), :structure_acronym=>ByRow(in(structures)), skipmissing=true)
     channels = channels.id ∩ getlfpchannels(session, probeid)
     isempty(channels) && @error "No matching channels found for structure(s) $structures. Perhaps you have entered the wrong probe id?"
     getlfp(session, probeid; channels, kwargs...)
@@ -242,7 +252,11 @@ function getlfp(session, probeids::Vector{Int}, args...; kwargs...)
 end
 
 function formatlfp(; sessionid=757216464, probeid=769322749, stimulus="gabors", structure="VISp", epoch=1, kwargs...)
-    session = Session(sessionid)
+    if sessionid < 100000000
+        session = Session(sessionid)
+    else
+        session = VisualBehavior.S3Session(sessionid)
+    end
     if isnothing(structure)
         structure = getchannels(session, probeid).id |> getstructureacronyms |> unique |> skipmissing |> collect |> Vector{String}
     end
@@ -276,10 +290,11 @@ end
 #     depths = depths[indexin(channels, vcat(cdfs...).id)]
 # end
 function _getchanneldepths(cdf, channels)
-    surfaceposition = minimum(subset(cdf, :ecephys_structure_acronym=>ByRow(ismissing)).probe_vertical_position)
+    # surfaceposition = minimum(subset(cdf, :structure_acronym=>ByRow(ismissing)).probe_vertical_position)
     # Assume the first `missing` channel corresponds to the surfaceprobe_vertical_position
     idxs = indexin(channels, cdf.id)[:]
-    alldepths = surfaceposition .- cdf.probe_vertical_position # in μm
+    # alldepths = surfaceposition .- cdf.probe_vertical_position # in μm
+    alldepths = cdf.dorsal_ventral_ccf_coordinate # in μm
     depths = fill(NaN, size(idxs))
     depths[.!isnothing.(idxs)] = alldepths[idxs[.!isnothing.(idxs)]]
     return depths
@@ -317,7 +332,7 @@ function sortbydepth(session, probeid, LFP::AbstractDimArray)
 end
 
 
-function rectifytime(X::AbstractDimArray; tol=5) # tol gives significant figures for rounding
+function rectifytime(X::AbstractDimArray; tol=4) # tol gives significant figures for rounding
     times = gettimes(X)
     step = times |> diff |> mean
     err = times |> diff |> std

@@ -140,7 +140,7 @@ end
 function getstructureacronyms(session::AbstractSession, units)
     unittable = getunitmetrics(session)
     acronyms = Vector{Any}(undef, size(units))
-    [acronyms[i] = notemptyfirst(unittable[unittable.unit_id.==units[i], :ecephys_structure_acronym]) for i ∈ 1:length(units)]
+    [acronyms[i] = notemptyfirst(unittable[unittable.unit_id.==units[i], :structure_acronym]) for i ∈ 1:length(units)]
     return acronyms
 end
 

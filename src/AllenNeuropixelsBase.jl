@@ -21,7 +21,6 @@ const reference_space = PythonCall.pynew()
 const nwb_api = PythonCall.pynew()
 const behavior_project_cache = PythonCall.pynew()
 const behavior_ecephys_session = PythonCall.pynew()
-const behavior_project_cache = PythonCall.pynew()
 export allensdk, brain_observatory, ecephys, ecephys_project_cache, mouse_connectivity_cache, ontologies_api, reference_space_cache, reference_space, behavior_ecephys_session, behavior_project_cache
 
 function __init__()
@@ -42,7 +41,6 @@ function __init__()
     PythonCall.pycopy!(nwb_api, pyimport("allensdk.brain_observatory.nwb.nwb_api"))
     PythonCall.pycopy!(behavior_project_cache, pyimport("allensdk.brain_observatory.behavior.behavior_project_cache"))
     PythonCall.pycopy!(behavior_ecephys_session, pyimport("allensdk.brain_observatory.ecephys.behavior_ecephys_session"))
-    PythonCall.pycopy!(behavior_project_cache, pyimport("allensdk.brain_observatory.behavior.behavior_project_cache"))
 
     ecephys_project_cache.EcephysProjectCache.from_warehouse(manifest=ecephysmanifest)
 end
@@ -86,14 +84,14 @@ export convertdataframe
 
 include("./EcephysCache.jl")
 include("./BrainObservatory.jl")
+include("./NWBSession.jl")
+include("./VisualBehavior.jl")
 include("./SparseDimArray.jl")
-include("./LFP.jl")
-include("./SpikeBand.jl")
 include("./MouseConnectivityCache.jl")
 include("./Ontologies.jl")
 include("./ReferenceSpace.jl")
-include("./NWBSession.jl")
-include("./VisualBehavior.jl")
+include("./LFP.jl")
+include("./SpikeBand.jl")
 include("./Behaviour.jl")
 
 end

@@ -53,13 +53,19 @@ struct Session <: AbstractSession
     pyObject
 end
 export Session
-Session(session_id::Int; kwargs...) = Session(getsessiondata(session_id; kwargs...))
+function Session(session_id::Int; kwargs...)
+    Session(getsessiondata(session_id; kwargs...))
+end
 Session(; params...) = Session(params[:sessionid]);
-getid(S::AbstractSession) = S.pyObject.ecephys_session_id
+getid(S::AbstractSession) = pyconvert(Int, S.pyObject.ecephys_session_id)
 getprobes(S::AbstractSession) = CSV.read(IOBuffer(S.pyObject.probes.to_csv()), DataFrame)
 getfile(S::AbstractSession) = datadir*"Ecephys/session_"*string(getid(S))*"/session_"*string(getid(S))*".nwb"
 getprobeids(S::AbstractSession) = getprobes(S)[!, :id]
-getchannels(S::AbstractSession) = CSV.read(IOBuffer(S.pyObject.channels.to_csv()), DataFrame)
+function getchannels(S::AbstractSession)
+    df = py2df(S.pyObject.channels.to_dafaframe())
+    df.structure_acronym = df.ecephys_structure_acronym
+    return df
+end
 function getchannels(S::AbstractSession, probeid)
     c = getchannels(S)
     c = subset(c, :probe_id=>ByRow(==(probeid)))
@@ -88,7 +94,7 @@ notemptyfirst(x) = length(x) > 0 ? x[1] : missing
 function getstructureacronyms(channelids::Vector{Int})
     channels = getchannels()
     acronyms = Vector{Any}(undef, size(channelids))
-    [acronyms[i] = notemptyfirst(channels[channels.id.==channelids[i], :ecephys_structure_acronym]) for i ∈ 1:length(channelids)]
+    [acronyms[i] = notemptyfirst(channels[channels.id.==channelids[i], :structure_acronym]) for i ∈ 1:length(channelids)]
     return acronyms
 end
 
@@ -97,6 +103,25 @@ function getstructureids(channelids::Vector{Int})
     acronyms = Vector{Any}(undef, size(channelids))
     [acronyms[i] = notemptyfirst(channels[channels.id.==channelids[i], :ecephys_structure_id]) for i ∈ 1:length(channelids)]
     return acronyms
+end
+
+function getprobestructures(S::AbstractSession)
+    df = listprobes(S)
+    acronyms = [unique(string.(d.structure_acronym)) for d in df]
+    # acronyms = [a[.!ismissing.(a)] for a in acronyms]
+    probeids = [unique(d.probe_id) |> first for d in df]
+    return Dict(probeids .=> acronyms)
+end
+
+function getprobestructures(S::AbstractSession, structures::AbstractVector)
+    D = getprobestructures(S)
+    filter!(d->any(structures .∈ (last(d),)), D)
+    D = Dict(k=>first(v[v.∈[structures]]) for (k, v) in D)
+end
+
+function getprobe(S::AbstractSession, structure::AbstractString)
+    D = getprobestructures(S, [structure])
+    return first(keys(D))
 end
 
 
@@ -111,20 +136,20 @@ export getunits
 
 function getunits(structure::String; kwargs...)
     units = getunits(; kwargs...)
-    units = subset(units, :ecephys_structure_acronym, "VIsp")
+    units = subset(units, :structure_acronym, structure)
 end
 function getsessionunits(session::AbstractSession) # Much faster than the option below
-    units = session.pyObject.units.to_csv()
-    CSV.read(IOBuffer(units), DataFrame)
+    units = pyObject(session.pyObject.units.to_dataframe())
+    units.structure_acronym = units.ecephys_structure_acronym
 end
 function getsessionunits(session::AbstractSession, structure::String)
-    subset(getsessionunits(session), :ecephys_structure_acronym, structure)
+    subset(getsessionunits(session), :structure_acronym, structure)
 end
 function getunits(session::AbstractSession; kwargs...)
     units = getunits(; kwargs...)
     units = subset(units, :ecephys_session_id, getid(session))
 end
-getunits(session::AbstractSession, structure::String) = subset(getunits(session), :ecephys_structure_acronym, structure)
+getunits(session::AbstractSession, structure::String) = subset(getunits(session), :structure_acronym, structure)
 
 
 
@@ -207,7 +232,7 @@ function getepochs(S::Session)
     PyPandasDataFrame(p) |> DataFrame
 end
 
-function getepochs(S::Session, stimulusname)
+function getepochs(S::AbstractSession, stimulusname)
     epoch_table = getepochs(S)
     df = subset(epoch_table, :stimulus_name=>ByRow(==(stimulusname)))
 end

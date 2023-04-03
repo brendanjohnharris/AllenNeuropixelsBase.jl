@@ -1,6 +1,7 @@
 module VisualBehavior
 using ..AllenNeuropixelsBase
 import ..AllenNeuropixelsBase as ANB
+using PythonCall
 using NWBS3
 using DataFrames
 using Downloads
@@ -84,7 +85,7 @@ const sources = Dict(
 
 
 
-S3Session(session_id::Int, args...; kwargs...) = S3Session(getsessionfile(session_id), args...; kwargs...)
+S3Session(session_id::Int, args...; kwargs...) = ANB.S3Session(getsessionfile(session_id), args...; kwargs...)
 
 
 """
@@ -110,7 +111,11 @@ getsessionfile(session_id::Int, args...) = getsessionfiles(args...)["$session_id
 
 getsessiontable() = manifest["project_metadata"]["ecephys_sessions.csv"] |> url2df
 getunits() = manifest["project_metadata"]["units.csv"] |> url2df
-
+function getunitanalysismetricsbysessiontype()
+    session_table = ANB.VisualBehavior.getsessiontable()
+    units = getunits()
+    sessionmetrics = innerjoin(session_table, metrics, on=:ecephys_session_id)
+end
 
 function getprobes(session::AbstractNWBSession)
     probes = VisualBehavior.getprobes()
@@ -157,6 +162,8 @@ Session(sessionid::Int) = sessionid |> getsessionfile |> ANB.S3Session
 
 # VisualBehaviorNeuropixelsProjectCache = ANB.behavior_project_cache.behavior_neuropixels_project_cache.VisualBehaviorNeuropixelsProjectCache
 # VisualBehaviorNeuropixelsProjectCache.from_s3_cache(mktempdir())
+
+
 
 
 end

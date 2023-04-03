@@ -20,9 +20,9 @@ mutable struct S3Session <: AbstractNWBSession
     end
 end
 initialize!(S::AbstractNWBSession) = (S.pyObject = sessionfromnwb(S.file); nothing) # Can take absolutely forever since dataframes suck
-S3Session(url::String) = S3Session(url, s3open(url)...)
+S3Session(url::String) = (S = S3Session(url, s3open(url)...); initialize!(S); S)
 
-getid(S::AbstractNWBSession) = getfile(S).identifier |> string |> Meta.parse
+getid(S::AbstractNWBSession) = pyconvert(Int, getfile(S).identifier |> string |> Meta.parse)
 # getprobes(S::AbstractNWBSession) = Dict(getfile(S).ec_electrode_groups)
 # getprobeids(S::AbstractNWBSession) = Dict(first(s) => pyconvert(Int, last(s).probe_id) for s in getprobes(S))
 # getprobefiles(S::AbstractNWBSession) = Dict(getfile(S).ec_electrode_groups)
@@ -32,7 +32,7 @@ function getfile(S::AbstractNWBSession)
     return S.file
 end
 
-function getlfpchannels(session::S3Session, probeid)
+function getlfpchannels(session::S3Session)
     f = getfile(session)
     channels = f["general"]["extracellular_ephys"]["electrodes"]["id"][:]
     close(f)
@@ -55,9 +55,89 @@ function py2df(p)
     return df[!, [end, (1:size(df, 2)-1)...]]
 end
 
-getid(S::AbstractNWBSession) = S.pyObject.behavior_session_id
+# getid(S::AbstractNWBSession) = pyconvert(Int, S.pyObject.behavior_ecephys_session_id)
 getprobes(S::AbstractNWBSession) = py2df(S.pyObject.probes)
 getchannels(S::AbstractNWBSession) = py2df(S.pyObject.get_channels())
-getepochs(S::AbstractNWBSession) = S.pyObject.stimulus_presentations.groupby("stimulus_block").head(1) |> py2df
+function getepochs(S::AbstractNWBSession)
+    df = S.pyObject.stimulus_presentations.groupby("stimulus_block").head(1) |> py2df
+    df.stop_time = df.end_time
+    return df
+end
 
 Base.Dict(p::Py) = pyconvert(Dict, p)
+
+getprobefiles(S::AbstractNWBSession; dataset=VisualBehavior) = dataset.getprobefiles(S)
+
+
+function getprobefile(session::AbstractNWBSession, name::AbstractString)
+    files = getprobefiles(session)
+    return files["probe_$(name)_lfp.nwb"]
+end
+
+getprobefile(session::AbstractNWBSession, probeid::Int) = getprobefile(session, first(subset(getprobes(session), :id => ByRow(==(probeid))).name))
+
+function getlfpchannels(session::AbstractNWBSession, probeid::Int)
+    f = getprobefile(session, probeid) |> NWBS3.s3open |> first
+    _lfp = Dict(f.acquisition)["probe_1108501239_lfp_data"]
+    channelids = pyconvert(Vector{Int64}, _lfp.electrodes.to_dataframe().index.values)
+end
+
+
+function getlfptimes(session::AbstractNWBSession, probeid::Int)
+    f = getprobefile(session, probeid) |> NWBS3.s3open |> first
+    _lfp = Dict(f.acquisition)["probe_1108501239_lfp_data"]
+    timedata = pyconvert(Vector{Float32}, _lfp.timestamps)
+end
+function getlfptimes(session::AbstractNWBSession, probeid::Int, idxs)
+    d = diff(idxs)
+    if all(d[1] .== d)
+        idxs = @py slice(idxs[0]-1, idxs[-1]-1, d[1])
+    end
+    f = getprobefile(session, probeid) |> NWBS3.s3open |> first
+    _lfp = Dict(f.acquisition)["probe_1108501239_lfp_data"]
+    timedata = _lfp.timestamps
+    timedata = pyconvert(Vector{Float32}, timedata[idxs])
+end
+function getlfptimes(session::AbstractNWBSession, probeid::Int, i::Interval)
+    f = getprobefile(session, probeid) |> NWBS3.s3open |> first
+    _lfp = Dict(f.acquisition)["probe_1108501239_lfp_data"]
+    timedata = _lfp.timestamps
+    # infer the timestep
+    dt = mean(diff(pyconvert(Vector, timedata[0:1000])))
+    putativerange = pyconvert(Float64, timedata[0]):dt:pyconvert(Float64, timedata[-1]+dt)
+    idxs = findall(putativerange .∈ (i,))
+    idxs = vcat(idxs[1].-(100:-1:1), idxs, idxs[end].+(1:100))
+    idxs = idxs[idxs .> 0]
+    idxs = idxs[idxs .< pyconvert(Int, timedata.len())]
+    ts = getlfptimes(session::AbstractNWBSession, probeid::Int, idxs)
+    ts = ts[ts .∈ (i,)]
+end
+
+function _getlfp(session::AbstractNWBSession, probeid::Int; channelidxs=1:length(getlfpchannels(session, probeid)), timeidxs=1:length(getlfptimes(session, probeid)))
+    @assert(any(getprobeids(session) .== probeid), "Probe $probeid does not belong to session $(getid(session))")
+    _timeidxs = timeidxs .- 1 # Python sucks
+    _channelidxs = channelidxs .- 1 # Python sucks
+    f, io = getprobefile(session, probeid) |> NWBS3.s3open
+    _lfp = Dict(f.acquisition)["probe_1108501239_lfp_data"]
+
+    # timedata = getlfptimes(session, probeid)
+    timedata = getlfptimes(session, probeid)
+    timedata = timedata[timeidxs]
+    channelids = getlfpchannels(session, probeid)
+    channelids = channelids[channelidxs]
+    lfp = zeros(Float32, length(timedata), length(channelids))
+    for (i, _channelidx) in enumerate(_channelidxs)
+        d = diff(_timeidxs)
+        # if all(d == d[1]) # We can do some efficient slicing
+        #     slc = @py slice(first(_timeidxs), last(_timeidxs), d[1])
+        #     @time @py _lfp.data[slc]
+        # else
+            lfp[:, i] .= pyconvert(Vector{Float32}, _lfp.data[_timeidxs, _channelidx])
+        # end
+    end
+    if channelids isa Number
+        channelids = [channelids]
+    end
+    X = DimArray(lfp, (Ti(timedata),  Dim{:channel}(channelids)))
+    return X
+end

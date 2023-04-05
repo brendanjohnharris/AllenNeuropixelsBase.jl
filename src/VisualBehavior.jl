@@ -2,11 +2,11 @@ module VisualBehavior
 using ..AllenNeuropixelsBase
 import ..AllenNeuropixelsBase as ANB
 using PythonCall
-using NWBS3
+using NWBStream
 using DataFrames
 using Downloads
 using JSON
-import NWBS3.url2df
+import NWBStream.url2df
 
 const visualbehavior = "https://visual-behavior-neuropixels-data.s3.us-west-2.amazonaws.com/"
 const visualbehaviorbehaviour = visualbehavior * "visual-behavior-neuropixels/"

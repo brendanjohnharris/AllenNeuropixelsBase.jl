@@ -1,9 +1,9 @@
 import AllenNeuropixelsBase as ANB
-using AllenNeuropixelsBase.NWBS3
+using AllenNeuropixelsBase.NWBStream
 using Test
 using AllenNeuropixelsBase.DataFrames
 
-@testset "NWBS3.jl" begin
+@testset "NWBStream.jl" begin
     f, io = s3open("https://visual-behavior-neuropixels-data.s3.us-west-2.amazonaws.com/visual-behavior-neuropixels/behavior_ecephys_sessions/1044385384/ecephys_session_1044385384.nwb")
     s3close(io)
 end

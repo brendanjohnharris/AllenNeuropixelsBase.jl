@@ -16,7 +16,7 @@ end
 # ╔═╡ c445ccf4-cf10-43b9-9c01-4051abc400ba
 begin
 	Pkg.activate("./")
-	Pkg.add(url="https://github.com/brendanjohnharris/NWBS3.jl#main")
+	Pkg.add(url="https://github.com/brendanjohnharris/NWBStream.jl#main")
 	Pkg.add(url="https://github.com/brendanjohnharris/AllenNeuropixelsBase.jl#main")
 	# Pkg.add("WGLMakie")
 	Pkg.add("DataFrames")
@@ -248,7 +248,7 @@ params = (;
     stimulus = "spontaneous",
     probeid,
     structure,
-    epoch = 1
+    epoch = 2
 )
 
 # ╔═╡ 7ec55a76-e63e-4920-997c-af80610eba73

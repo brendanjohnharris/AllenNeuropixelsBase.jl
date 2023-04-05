@@ -1,4 +1,4 @@
-using NWBS3
+using NWBStream
 export AbstractNWBSession, NWBSession, S3Session
 
 sessionfromnwb(S) = behavior_ecephys_session.BehaviorEcephysSession.from_nwb(S)
@@ -77,14 +77,14 @@ end
 getprobefile(session::AbstractNWBSession, probeid::Int) = getprobefile(session, first(subset(getprobes(session), :id => ByRow(==(probeid))).name))
 
 function getlfpchannels(session::AbstractNWBSession, probeid::Int)
-    f = getprobefile(session, probeid) |> NWBS3.s3open |> first
+    f = getprobefile(session, probeid) |> NWBStream.s3open |> first
     _lfp = Dict(f.acquisition)["probe_1108501239_lfp_data"]
     channelids = pyconvert(Vector{Int64}, _lfp.electrodes.to_dataframe().index.values)
 end
 
 
 function getlfptimes(session::AbstractNWBSession, probeid::Int)
-    f = getprobefile(session, probeid) |> NWBS3.s3open |> first
+    f = getprobefile(session, probeid) |> NWBStream.s3open |> first
     _lfp = Dict(f.acquisition)["probe_1108501239_lfp_data"]
     timedata = pyconvert(Vector{Float32}, _lfp.timestamps)
 end
@@ -93,13 +93,13 @@ function getlfptimes(session::AbstractNWBSession, probeid::Int, idxs)
     if all(d[1] .== d)
         idxs = @py slice(idxs[0]-1, idxs[-1]-1, d[1])
     end
-    f = getprobefile(session, probeid) |> NWBS3.s3open |> first
+    f = getprobefile(session, probeid) |> NWBStream.s3open |> first
     _lfp = Dict(f.acquisition)["probe_1108501239_lfp_data"]
     timedata = _lfp.timestamps
     timedata = pyconvert(Vector{Float32}, timedata[idxs])
 end
 function getlfptimes(session::AbstractNWBSession, probeid::Int, i::Interval)
-    f = getprobefile(session, probeid) |> NWBS3.s3open |> first
+    f = getprobefile(session, probeid) |> NWBStream.s3open |> first
     _lfp = Dict(f.acquisition)["probe_1108501239_lfp_data"]
     timedata = _lfp.timestamps
     # infer the timestep
@@ -117,7 +117,7 @@ function _getlfp(session::AbstractNWBSession, probeid::Int; channelidxs=1:length
     @assert(any(getprobeids(session) .== probeid), "Probe $probeid does not belong to session $(getid(session))")
     _timeidxs = timeidxs .- 1 # Python sucks
     _channelidxs = channelidxs .- 1 # Python sucks
-    f, io = getprobefile(session, probeid) |> NWBS3.s3open
+    f, io = getprobefile(session, probeid) |> NWBStream.s3open
     _lfp = Dict(f.acquisition)["probe_1108501239_lfp_data"]
 
     # timedata = getlfptimes(session, probeid)

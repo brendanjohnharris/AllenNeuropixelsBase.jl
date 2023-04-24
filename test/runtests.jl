@@ -32,10 +32,9 @@ end
         probeid = 769322751, # VISl # 769322749, # VISp #
         structure = "VISp",
         epoch = 1,
-        surrogate = AP(1250),
         pass = (1, 100)
 )
-    formatlfp(; sessionid=757216464, probeid=769322749, stimulus="gabors", structure="VISp", epoch=1, kwargs...)
+    formatlfp(; params...)
 end
 
 

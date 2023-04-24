@@ -2,6 +2,8 @@ using IntervalSets
 using HDF5
 using Statistics
 
+export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod, getlfp, samplingrate, WaveletMatrix, LogWaveletMatrix, formatlfp, getchannels, getchanneldepths, waveletmatrix, getunitdepths, getdim, gettimes, sortbydepth, rectifytime, stimulusepochs, stimulusintervals, gaborintervals, alignlfp
+
 LFPVector = AbstractDimArray{T, 1, Tuple{A}, B} where {T, A<:DimensionalData.TimeDim, B}
 LFPMatrix = AbstractDimArray{T, 2, Tuple{A, B}} where {T, A<:DimensionalData.TimeDim, B<:Dim{:channel}}
 export LFPMatrix, LFPVector # For simpler dispatch
@@ -154,10 +156,11 @@ function isinvalidtime(session::AbstractSession, probeids=getprobeids(session), 
         return false
     end
     intervals = [session.pyObject.get_invalid_times().start_time.values, session.pyObject.get_invalid_times().stop_time.values]
-    intervals = [[intervals[1][i], intervals[2][i]] for i ∈ 1:length(intervals[1])]
+    intervals = [[pyconvert(Float64, intervals[1][i]), pyconvert(Float64, intervals[2][i])] for i ∈ 0:(length(intervals[1])-1)]
     tags = session.pyObject.get_invalid_times().tags.values
-    tags = vcat([tryparse.(Int64, i) for i ∈ tags]...)
-    badprobes = tags[.!isnothing.(tags)]
+    # tags = vcat([pyconvert(Array{Int64}, i) for i ∈ tags]...)
+    # badprobes = tags[.!isnothing.(tags)]
+    badprobes = [];
     if times isa Interval
         isininterval = [any(i .∈ (times,)) for i ∈ intervals]
     else
@@ -252,7 +255,7 @@ function getlfp(session, probeids::Vector{Int}, args...; kwargs...)
 end
 
 function formatlfp(; sessionid=757216464, probeid=769322749, stimulus="gabors", structure="VISp", epoch=1, kwargs...)
-    if sessionid < 100000000
+    if sessionid < 1000000000
         session = Session(sessionid)
     else
         session = VisualBehavior.S3Session(sessionid)
@@ -266,6 +269,7 @@ function formatlfp(; sessionid=757216464, probeid=769322749, stimulus="gabors", 
     X = sortbydepth(session, probeid, X)
     X = DimArray(X; metadata=Dict(:sessionid=>sessionid, :probeid=>probeid, :stimulus=>stimulus, :structure=>structure))
 end
+export formatlfp
 
 
 
@@ -347,6 +351,7 @@ function rectifytime(X::AbstractDimArray; tol=4) # tol gives significant figures
     @assert length(times) == size(X, Ti)
     X = set(X, Ti => times)
 end
+
 
 function stimulusepochs(session, stim)
     stimtable = getepochs(session, stim)

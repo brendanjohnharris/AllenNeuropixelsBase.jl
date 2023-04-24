@@ -1,5 +1,7 @@
 using IntervalSets
 
+export brainobservatorycache, getophysexperiments, getspatialgrating, getdriftinggrating, getnaturalmovie, getnaturalstimulusframes, getdriftinggratingframes, getnaturalmovieframes, getstaticgratingframes, getstimulusframes
+
 function brainobservatorycache(manifest_file=brainobservatorymanifest)
    brain_observatory_cache.BrainObservatoryCache(manifest_file=manifest_file)
 end

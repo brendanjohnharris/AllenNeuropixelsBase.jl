@@ -1,5 +1,7 @@
 using Dierckx
 
+export getrunningspeed, smoothrunningspeed, getstimuli, stimulustrace
+
 function getrunningspeed(S::AbstractSession)
     f = h5open(getfile(S), "r")
     r = f["processing"]["running"]["running_speed"]["data"] |> read

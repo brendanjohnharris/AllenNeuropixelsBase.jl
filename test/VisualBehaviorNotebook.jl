@@ -15,13 +15,13 @@ end
 
 # ╔═╡ c445ccf4-cf10-43b9-9c01-4051abc400ba
 begin
-	Pkg.activate("./")
-	Pkg.add(url="https://github.com/brendanjohnharris/NWBStream.jl#main")
-	Pkg.add(url="https://github.com/brendanjohnharris/AllenNeuropixelsBase.jl#main")
-	# Pkg.add("WGLMakie")
-	Pkg.add("DataFrames")
-	Pkg.add("Statistics")
-	Pkg.add("FileIO")
+	Pkg.activate("../")
+	# Pkg.add(url="https://github.com/brendanjohnharris/NWBStream.jl#main")
+	# Pkg.add(url="https://github.com/brendanjohnharris/AllenNeuropixelsBase.jl#main")
+	# # Pkg.add("WGLMakie")
+	# Pkg.add("DataFrames")
+	# Pkg.add("Statistics")
+	# Pkg.add("FileIO")
 end
 
 # ╔═╡ 79b92c17-cc5f-4ca2-8b08-f6015729a9a9
@@ -66,7 +66,7 @@ Interfacing with the Python [Allen SDK](https://github.com/AllenInstitute/AllenS
 """
 
 # ╔═╡ d8fd4541-08a5-4ace-a998-769771c976e8
-import AllenNeuropixelsBase as ANB
+import AllenNeuropixelsBase as ANB 
 
 # ╔═╡ 2e3d037c-932d-4d5a-afdb-351e836bdfb2
 # using WGLMakie
@@ -244,12 +244,15 @@ The LFP data for our probe can be accessed as (warning, it is slow):
 
 # ╔═╡ f0241126-912b-4863-9d4e-917af1426602
 params = (;
-    sessionid = ANB.getid(session),
+    sessionid = ANB.getid(session), #
     stimulus = "spontaneous",
-    probeid,
+    probeid, # 
     structure,
     epoch = 2
 )
+
+# ╔═╡ 2a9ccb08-29a2-4f4b-a01a-2c97c12a96b8
+ANB.getid(session)
 
 # ╔═╡ 7ec55a76-e63e-4920-997c-af80610eba73
 LFP = ANB.formatlfp(; params...)
@@ -322,6 +325,7 @@ There are still channels with little signal outside of the brain and at the very
 # ╠═a61c6563-80ea-451c-82fd-7e6d1fcba752
 # ╟─b9c2e65c-03cf-45d7-9309-b601f486c62b
 # ╠═f0241126-912b-4863-9d4e-917af1426602
+# ╠═2a9ccb08-29a2-4f4b-a01a-2c97c12a96b8
 # ╠═7ec55a76-e63e-4920-997c-af80610eba73
 # ╟─d0a301a0-038c-4827-8683-e9d8807186ea
 # ╠═a5fca30e-531e-4b09-97e9-a762059dc66c

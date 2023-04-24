@@ -3,6 +3,8 @@ using ProgressLogging
 using Random
 using IntervalSets
 
+export downloadspikes, getspiketimes, getspikeamplitudes, formatspiketimes, spikematrix, getsessionpath, SpikeMatrix, spikematrix, alignspiketimes, countspikes, fanofactor, defaultfanobins, getspikes, getstructureacronyms, minspikediff, formatspikes, getisis, receptivefieldfilter, getmetric, getfano, getclosestchannels, getpeakchannels, getunitchannels
+
 function downloadspikes(S::AbstractSession)
     _ = S.pyObject.spike_times
     _ = S.pyObject.spike_amplitudes
@@ -232,7 +234,6 @@ function alignspiketimes(session, X, ::Val{:flashes}; x_position=nothing, y_posi
 end
 
 alignspiketimes(session, X, stimulus="flashes"; kwargs...) = alignspiketimes(session, X, stimulus|>Symbol|>Val; kwargs...)
-
 
 
 

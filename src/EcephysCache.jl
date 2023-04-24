@@ -1,5 +1,10 @@
 using IntervalSets
 
+export ecephyscache, getsessiontable, getprobes, getchannels, listprobes, getsessiondata, AbstractSession, Session, getid, getprobes, getfile, getprobeids, getchannels, getprobecoordinates, getstructureacronyms, getstructureids, getprobestructures, getprobe, getunits
+
+"""
+    `ecephyscache()`
+
 function ecephyscache()
     ecephys_project_cache.EcephysProjectCache.from_warehouse(manifest=ecephysmanifest)
 end
@@ -58,11 +63,11 @@ function Session(session_id::Int; kwargs...)
 end
 Session(; params...) = Session(params[:sessionid]);
 getid(S::AbstractSession) = pyconvert(Int, S.pyObject.ecephys_session_id)
-getprobes(S::AbstractSession) = CSV.read(IOBuffer(S.pyObject.probes.to_csv()), DataFrame)
+getprobes(S::AbstractSession) = py2df(S.pyObject.probes)
 getfile(S::AbstractSession) = datadir*"Ecephys/session_"*string(getid(S))*"/session_"*string(getid(S))*".nwb"
 getprobeids(S::AbstractSession) = getprobes(S)[!, :id]
 function getchannels(S::AbstractSession)
-    df = py2df(S.pyObject.channels.to_dafaframe())
+    df = py2df(S.pyObject.channels)
     df.structure_acronym = df.ecephys_structure_acronym
     return df
 end

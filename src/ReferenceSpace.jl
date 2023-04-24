@@ -1,5 +1,7 @@
 using Colors
 
+export referencespacecache, getstructuretree, getstructurecolor, getstructurecolors, getstructuretreedepth, getstructurename
+
 function referencespacecache(reference_space_key="annotation/ccf_2017"; resolution=25, manifest=referencespacemanifest)
     reference_space_cache.ReferenceSpaceCache(resolution, reference_space_key, manifest=manifest)
 end

@@ -14,5 +14,5 @@ python = "=3.9"
 meson = ""
 
 [pip.deps]
-psycopg2-binary = "==2.95"
+psycopg2-binary = "==2.9.5"
 allensdk = "@https://github.com/brendanjohnharris/AllenSDK/archive/refs/tags/v2.19.zip"

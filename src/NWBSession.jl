@@ -65,6 +65,9 @@ function getepochs(S::AbstractNWBSession)
 end
 
 Base.Dict(p::Py) = pyconvert(Dict, p)
+function Base.Dict(d::Dict{T, <:PythonCall.PyArray}) where {T}
+    return Dict(k => pyconvert(Array{eltype(v)}, v) for (k, v) in d)
+end
 
 getprobefiles(S::AbstractNWBSession; dataset=VisualBehavior) = dataset.getprobefiles(S)
 

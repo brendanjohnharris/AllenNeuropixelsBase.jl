@@ -1,6 +1,6 @@
 using IntervalSets
 
-export ecephyscache, getsessiontable, getprobes, getchannels, listprobes, getsessiondata, AbstractSession, Session, getid, getprobes, getfile, getprobeids, getchannels, getprobecoordinates, getstructureacronyms, getstructureids, getprobestructures, getprobe, getunits, getepochs, getstimuli, getstimulustimes
+export ecephyscache, getsessiontable, getprobes, getchannels, listprobes, getsessiondata, AbstractSession, Session, getid, getprobes, getfile, getprobeids, getchannels, getprobecoordinates, getstructureacronyms, getstructureids, getprobestructures, getprobe, getunits, getepochs, getstimuli, getstimulustimes, getunitmetrics, getunitanalysismetrics, getunitanalysismetricsbysessiontype
 
 function ecephyscache()
     ecephys_project_cache.EcephysProjectCache.from_warehouse(manifest=ecephysmanifest)
@@ -14,7 +14,7 @@ Read the session table data from the `EcephysProjectCache` object returned by `e
 """
 function getsessiontable()
     @info "Please wait, this can take a few seconds"
-    CSV.read(IOBuffer(ecephyscache().get_session_table().to_csv()), DataFrame);
+    py2df(ecephyscache().get_session_table())
 end
 export getsessiontable
 
@@ -27,12 +27,12 @@ Read the probe data from the `EcephysProjectCache` object returned by `ecephysca
 A `DataFrame` containing the probe data.
 """
 function getprobes()
-    CSV.read(IOBuffer(ecephyscache().get_probes().to_csv()), DataFrame);
+    py2df(ecephyscache().get_probes())
 end
 export getprobes
 
 function getchannels()
-    CSV.read(IOBuffer(ecephyscache().get_channels().to_csv()), DataFrame);
+    py2df(ecephyscache().get_channels());
 end
 export getchannels
 
@@ -56,7 +56,11 @@ struct Session <: AbstractSession
 end
 export Session
 function Session(session_id::Int; kwargs...)
-    Session(getsessiondata(session_id; kwargs...))
+    if session_id > 1000000000
+        VisualBehavior.Session(session_id; kwargs...)
+    else
+        Session(getsessiondata(session_id; kwargs...))
+    end
 end
 Session(; params...) = Session(params[:sessionid]);
 getid(S::AbstractSession) = pyconvert(Int, S.pyObject.ecephys_session_id)
@@ -131,8 +135,8 @@ function getunits(; filter_by_validity=true, amplitude_cutoff_maximum = 0.1, pre
     str = ecephyscache().get_units(filter_by_validity=filter_by_validity,
                             amplitude_cutoff_maximum=amplitude_cutoff_maximum,
                             presence_ratio_minimum=presence_ratio_minimum,
-                            isi_violations_maximum=isi_violations_maximum).to_csv()
-    CSV.read(IOBuffer(str), DataFrame);
+                            isi_violations_maximum=isi_violations_maximum)
+    py2df(str)
 end
 export getunits
 
@@ -160,8 +164,8 @@ function getunitanalysismetricsbysessiontype(session_type; filter_by_validity=tr
                             filter_by_validity=filter_by_validity,
                             amplitude_cutoff_maximum=amplitude_cutoff_maximum,
                             presence_ratio_minimum=presence_ratio_minimum,
-                            isi_violations_maximum=isi_violations_maximum).to_csv()
-    CSV.read(IOBuffer(str), DataFrame);
+                            isi_violations_maximum=isi_violations_maximum)
+    py2df(str)
 end
 export getunitanalysismetricsbysessiontype
 
@@ -184,18 +188,18 @@ export getallunitmetrics
 
 function getunitanalysismetrics(session::AbstractSession; annotate=true, filter_by_validity=true, kwargs...)
     str = ecephyscache().get_unit_analysis_metrics_for_session(getid(session); annotate, filter_by_validity, kwargs...)
-    PyPandasDataFrame(str) |> DataFrame
+    py2df(str)
 end
 
 
 function getstimuli(S::Session)
     str =  S.pyObject.stimulus_presentations
-    PyPandasDataFrame(str) |> DataFrame
+    py2df(str)
 end
 
 function getunitmetrics(session::AbstractSession)
     str = session.pyObject.units
-    PyPandasDataFrame(str) |> DataFrame
+    py2df(str)
 end
 
 function getstimulusname(session::AbstractSession, time::Number; stimulus_table=getstimuli(session))

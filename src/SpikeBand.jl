@@ -18,13 +18,13 @@ function getsessionpath(session::AbstractSession)
     path = joinpath(datadir, "Ecephys", "session_"*string(getid(session)), "session_"*string(getid(session))*".nwb");
 end
 
-getspiketimes(S::AbstractSession) = S.pyObject.spike_times
-getspikeamplitudes(S::AbstractSession) = S.pyObject.spike_amplitudes
+getspiketimes(S::AbstractSession) = S.pyObject.spike_times |> Dict
+getspikeamplitudes(S::AbstractSession) = S.pyObject.spike_amplitudes |> Dict
 
 function getspiketimes(S::AbstractSession, structure::String)
     unitstructs = getunitmetrics(S)
     unitids = unitstructs[unitstructs.structure_acronym .== structure, :].unit_id
-    spiketimes = filter(p -> p[1] in unitids, getspiketimes(S))
+    spiketimes = filter(p -> p[1] in unitids, getspiketimes(S)) |> Dict
 end
 
 function getspiketimes(S::AbstractSession, unitids::Vector{Int})

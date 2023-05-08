@@ -28,13 +28,13 @@ end
 @testset "Base" begin
     params = (;
         sessionid = 1044385384,
-        stimulus = "gabors",
+        stimulus = "natural_movie_one_more_repeats",
         probeid = 769322751, # VISl # 769322749, # VISp #
         structure = "VISp",
         epoch = 1,
         pass = (1, 100)
 )
-    formatlfp(; params...)
+    ANB.formatlfp(; params...)
 end
 
 

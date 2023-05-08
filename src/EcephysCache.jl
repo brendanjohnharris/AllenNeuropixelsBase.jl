@@ -14,7 +14,9 @@ Read the session table data from the `EcephysProjectCache` object returned by `e
 """
 function getsessiontable()
     @info "Please wait, this can take a few seconds"
-    py2df(ecephyscache().get_session_table())
+    df = py2df(ecephyscache().get_session_table())
+    df.ecephys_structure_acronyms = [string.(s) for s in df.ecephys_structure_acronyms]
+    return df
 end
 export getsessiontable
 

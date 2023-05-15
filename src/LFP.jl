@@ -254,7 +254,7 @@ function getlfp(session, probeids::Vector{Int}, args...; kwargs...)
     LFP = [getlfp(session, probeid, args...; kwargs...) for probeid ∈ probeids]
 end
 
-function formatlfp(; sessionid=757216464, probeid=769322749, stimulus="gabors", structure="VISp", epoch=:longest, kwargs...)
+function formatlfp(; tol=6, sessionid=757216464, probeid=769322749, stimulus="gabors", structure="VISp", epoch=:longest, kwargs...)
     if sessionid < 1000000000
         session = Session(sessionid)
     else
@@ -264,7 +264,7 @@ function formatlfp(; sessionid=757216464, probeid=769322749, stimulus="gabors", 
         structure = getchannels(session, probeid).id |> getstructureacronyms |> unique |> skipmissing |> collect |> Vector{String}
     end
     if stimulus == "all"
-        X = getlfp(session, probeid, structure; inbrain=200) |> rectifytime
+        X = rectifytime(getlfp(session, probeid, structure; inbrain=200); tol)
     else
         epochs = getepochs(session, stimulus)
         if epoch == :longest
@@ -276,7 +276,7 @@ function formatlfp(; sessionid=757216464, probeid=769322749, stimulus="gabors", 
         end
         epoch = epochs[epoch, :]
         times = epoch.start_time..epoch.stop_time
-        X = getlfp(session, probeid, structure; inbrain=200, times) |> rectifytime
+        X = rectifytime(getlfp(session, probeid, structure; inbrain=200, times); tol)
     end
     X = sortbydepth(session, probeid, X)
     X = DimArray(X; metadata=Dict(:sessionid=>sessionid, :probeid=>probeid, :stimulus=>stimulus, :structure=>structure))
@@ -348,20 +348,20 @@ function sortbydepth(session, probeid, LFP::AbstractDimArray)
 end
 
 
-function rectifytime(X::AbstractDimArray; tol=4) # tol gives significant figures for rounding
-    times = gettimes(X)
-    step = times |> diff |> mean
-    err = times |> diff |> std
-    if err > step/10.0^(-tol)
+function rectifytime(X::AbstractDimArray; tol=6) # tol gives significant figures for rounding
+    ts = gettimes(X)
+    stp = ts |> diff |> mean
+    err = ts |> diff |> std
+    if err > stp/10.0^(-tol)
         @warn "Time step is not approximately constant, skipping rectification"
     else
-        step = round(step; digits=tol)
-        t0, t1 = round.(extrema(times); digits=tol)
-        times = t0:step:t1+(100*step)
-        times = times[1:size(X, Ti)] # Should be ok?
+        stp = round(stp; digits=tol)
+        t0, t1 = round.(extrema(ts); digits=tol)
+        ts = t0:stp:t1+(10000*stp)
+        ts = ts[1:size(X, Ti)] # Should be ok?
     end
-    @assert length(times) == size(X, Ti)
-    X = set(X, Ti => times)
+    @assert length(ts) == size(X, Ti)
+    X = set(X, Ti => ts)
 end
 
 

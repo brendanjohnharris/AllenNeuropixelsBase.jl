@@ -2,7 +2,7 @@ using IntervalSets
 using HDF5
 using Statistics
 
-export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod, getlfp, samplingrate, WaveletMatrix, LogWaveletMatrix, formatlfp, getchannels, getchanneldepths, waveletmatrix, getunitdepths, getdim, gettimes, sortbydepth, rectifytime, stimulusepochs, stimulusintervals, gaborintervals, alignlfp, logwaveletmatrix
+export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod, getlfp, getlfptimes, getlfpchannels, samplingrate, WaveletMatrix, LogWaveletMatrix, formatlfp, getchannels, getchanneldepths, waveletmatrix, getunitdepths, getdim, gettimes, sortbydepth, rectifytime, stimulusepochs, stimulusintervals, gaborintervals, alignlfp, logwaveletmatrix
 
 LFPVector = AbstractDimArray{T, 1, Tuple{A}, B} where {T, A<:DimensionalData.TimeDim, B}
 LFPMatrix = AbstractDimArray{T, 2, Tuple{A, B}} where {T, A<:DimensionalData.TimeDim, B<:Dim{:channel}}
@@ -107,7 +107,7 @@ end
 
 
 """
-Get the lfp data for a probe,  providing *indices* for channels and times. See function below for indexing by channel ids and time values/intervals
+Get the lfp data for a probe, providing *indices* for channels and times. See function below for indexing by channel ids and time values/intervals
 """
 function _getlfp(session::AbstractSession, probeid::Int; channelidxs=1:length(getlfpchannels(session, probeid)), timeidxs=1:length(getlfptimes(session, probeid)))
     @assert(any(getprobeids(session) .== probeid), "Probe $probeid does not belong to session $(getid(session))")
@@ -254,7 +254,7 @@ function getlfp(session, probeids::Vector{Int}, args...; kwargs...)
     LFP = [getlfp(session, probeid, args...; kwargs...) for probeid ∈ probeids]
 end
 
-function formatlfp(; sessionid=757216464, probeid=769322749, stimulus="gabors", structure="VISp", epoch=1, kwargs...)
+function formatlfp(; sessionid=757216464, probeid=769322749, stimulus="gabors", structure="VISp", epoch=:longest, kwargs...)
     if sessionid < 1000000000
         session = Session(sessionid)
     else
@@ -263,9 +263,21 @@ function formatlfp(; sessionid=757216464, probeid=769322749, stimulus="gabors", 
     if isnothing(structure)
         structure = getchannels(session, probeid).id |> getstructureacronyms |> unique |> skipmissing |> collect |> Vector{String}
     end
-    epoch = getepochs(session, stimulus)[epoch, :]
-    times = epoch.start_time..epoch.stop_time
-    X = getlfp(session, probeid, structure; inbrain=200, times) |> rectifytime
+    if stimulus == "all"
+        X = getlfp(session, probeid, structure; inbrain=200) |> rectifytime
+    else
+        epochs = getepochs(session, stimulus)
+        if epoch == :longest
+            _, epoch = findmax(epochs.duration)
+        elseif epoch == :first
+            epoch = 1
+        elseif epoch == :last
+            epoch = size(epochs, 1)
+        end
+        epoch = epochs[epoch, :]
+        times = epoch.start_time..epoch.stop_time
+        X = getlfp(session, probeid, structure; inbrain=200, times) |> rectifytime
+    end
     X = sortbydepth(session, probeid, X)
     X = DimArray(X; metadata=Dict(:sessionid=>sessionid, :probeid=>probeid, :stimulus=>stimulus, :structure=>structure))
 end
@@ -343,9 +355,9 @@ function rectifytime(X::AbstractDimArray; tol=4) # tol gives significant figures
     if err > step/10.0^(-tol)
         @warn "Time step is not approximately constant, skipping rectification"
     else
-        step = round(step; sigdigits=tol)
-        t0, t1 = round.(extrema(times); sigdigits=tol+1)
-        times = t0:step:t1+(10*step)
+        step = round(step; digits=tol)
+        t0, t1 = round.(extrema(times); digits=tol)
+        times = t0:step:t1+(100*step)
         times = times[1:size(X, Ti)] # Should be ok?
     end
     @assert length(times) == size(X, Ti)

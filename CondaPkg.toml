@@ -16,6 +16,4 @@ requests = ""
 scikit-image = ""
 statsmodels = "<=0.13.0"
 
-[pip.deps]
-allensdk = "@https://github.com/brendanjohnharris/AllenSDK/archive/refs/tags/v2.19.zip"
 

@@ -2,7 +2,7 @@ using IntervalSets
 using HDF5
 using Statistics
 
-export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod, getlfp, getlfptimes, getlfpchannels, samplingrate, WaveletMatrix, LogWaveletMatrix, formatlfp, getchannels, getchanneldepths, waveletmatrix, getunitdepths, getdim, gettimes, sortbydepth, rectifytime, stimulusepochs, stimulusintervals, gaborintervals, alignlfp, logwaveletmatrix
+export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod, getlfp, getlfptimes, getlfpchannels, samplingrate, WaveletMatrix, LogWaveletMatrix, formatlfp, getchannels, getchanneldepths, waveletmatrix, getunitdepths, getdim, gettimes, sortbydepth, rectifytime, stimulusepochs, stimulusintervals, gaborintervals, alignlfp, logwaveletmatrix, matchlfp
 
 LFPVector = AbstractDimArray{T, 1, Tuple{A}, B} where {T, A<:DimensionalData.TimeDim, B}
 LFPMatrix = AbstractDimArray{T, 2, Tuple{A, B}} where {T, A<:DimensionalData.TimeDim, B<:Dim{:channel}}
@@ -449,3 +449,16 @@ end
 # end
 
 alignlfp(session, X, stimulus::Union{String, Symbol}="gabors"; kwargs...) = alignlfp(session, X, stimulus|>Symbol|>Val; kwargs...)
+
+"""
+Adjust the times of LFP matrix Y so that they match the matrix X
+"""
+function matchlfp(X, Y)
+    ts = Interval(X)∩Interval(Y)
+    ts = dims(X, Ti)[ts]
+    Y = Y[Ti(Near(ts))]
+    Y.dims[1].val.data .= ts
+    X = X[Ti(At(ts))]
+    @assert dims(X, Ti) == dims(Y, Ti)
+    return (X, Y)
+end

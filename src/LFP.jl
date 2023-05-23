@@ -307,10 +307,11 @@ end
 # end
 function _getchanneldepths(cdf, channels)
     # surfaceposition = minimum(subset(cdf, :structure_acronym=>ByRow(ismissing)).probe_vertical_position)
+    surfaceposition = minimum(subset(cdf, :structure_acronym=>ByRow(ismissing)).dorsal_ventral_ccf_coordinate)
     # Assume the first `missing` channel corresponds to the surfaceprobe_vertical_position
     idxs = indexin(channels, cdf.id)[:]
     # alldepths = surfaceposition .- cdf.probe_vertical_position # in μm
-    alldepths = cdf.dorsal_ventral_ccf_coordinate # in μm
+    alldepths = cdf.dorsal_ventral_ccf_coordinate .- surfaceposition # in μm
     depths = fill(NaN, size(idxs))
     depths[.!isnothing.(idxs)] = alldepths[idxs[.!isnothing.(idxs)]]
     return depths
@@ -454,11 +455,12 @@ alignlfp(session, X, stimulus::Union{String, Symbol}="gabors"; kwargs...) = alig
 Adjust the times of LFP matrix Y so that they match the matrix X
 """
 function matchlfp(X, Y)
-    ts = Interval(X)∩Interval(Y)
-    ts = dims(X, Ti)[ts]
+    _ts = Interval(X)∩Interval(Y)
+    ts = dims(X, Ti)
+    ts = ts[last(findfirst(ts .∈ (_ts,))):last(findlast(ts .∈ (_ts,)))]
     Y = Y[Ti(Near(ts))]
-    Y.dims[1].val.data .= ts
-    X = X[Ti(At(ts))]
+    Y = DimensionalData.setdims(Y, ts)
+    X = X[Ti(_ts)]
     @assert dims(X, Ti) == dims(Y, Ti)
     return (X, Y)
 end

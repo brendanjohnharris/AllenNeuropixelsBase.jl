@@ -32,11 +32,15 @@ function getspiketimes(S::AbstractSession, unitids::Vector{Int})
     Dict(a => b for (a,b) in spiketimes if a in unitids)
 end
 
-function formatspiketimes(; sessionid=757216464, structure="VISp", stimulus="gabors", n=1, filter=true, kwargs...)
+function formatspiketimes(; sessionid=757216464, structure="VISp", stimulus="gabors", epoch=:longest, filter=true, kwargs...)
     S = Session(sessionid)
 
     spiketimes = getspiketimes(S, structure)
-    I = stimulusepochs(S, stimulus).interval[n]
+    Is = stimulusepochs(S, stimulus).interval
+    if epoch === :longest
+        _, epoch = findmax(IntervalSets.width, Is)
+    end
+    I = Is[epoch]
     ks = keys(spiketimes)
     vals = values(spiketimes)
     vals = [v[in.(v, (I,))] for v in vals]
@@ -279,18 +283,27 @@ function metricmap(stimulus)
         return :ns
     elseif stimulus == "gabors"
         return :rf
+    elseif stimulus == "static_gratings"
+        return :sg
+    elseif isnothing(stimulus)
+        return nothing
     end
 end
 
 function getmetric(metrics::DataFrame, metric, stimulus)
     sesh = metricmap(stimulus)
-    return metrics[:, Symbol(reduce(*, string.([metric, :_, sesh])))]
+    if isnothing(sesh)
+        return metrics[:, Symbol(metric)]
+    else
+        return metrics[:, Symbol(reduce(*, string.([metric, :_, sesh])))]
+    end
 end
 
 function getfano(metrics::DataFrame, stimulus)
     sesh = metricmap(stimulus)
     return metrics[:, Symbol(reduce(*, string.([:fano_, sesh])))]
 end
+
 
 function findvalidunits(session, units; kwargs...)
     units = collect(units)

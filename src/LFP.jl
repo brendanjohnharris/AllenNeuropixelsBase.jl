@@ -306,8 +306,8 @@ end
 #     depths = depths[indexin(channels, vcat(cdfs...).id)]
 # end
 function _getchanneldepths(cdf, channels)
-    # surfaceposition = minimum(subset(cdf, :structure_acronym=>ByRow(ismissing)).probe_vertical_position)
-    surfaceposition = minimum(subset(cdf, :structure_acronym=>ByRow(ismissing)).dorsal_ventral_ccf_coordinate)
+    # surfaceposition = minimum(subset(cdf, :structure_acronym=>ByRow(ismissing)).probe_vertical_position) # Minimum because tip is at 0
+    surfaceposition = maximum(subset(cdf, :structure_acronym=>ByRow(ismissing)).dorsal_ventral_ccf_coordinate)
     # Assume the first `missing` channel corresponds to the surfaceprobe_vertical_position
     idxs = indexin(channels, cdf.id)[:]
     # alldepths = surfaceposition .- cdf.probe_vertical_position # in μm

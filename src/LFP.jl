@@ -2,7 +2,7 @@ using IntervalSets
 using HDF5
 using Statistics
 
-export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod, getlfp, getlfptimes, getlfpchannels, samplingrate, WaveletMatrix, LogWaveletMatrix, formatlfp, getchannels, getchanneldepths, waveletmatrix, getunitdepths, getdim, gettimes, sortbydepth, rectifytime, stimulusepochs, stimulusintervals, gaborintervals, alignlfp, logwaveletmatrix, matchlfp
+export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod, getlfp, getlfptimes, getlfpchannels, samplingrate, WaveletMatrix, LogWaveletMatrix, formatlfp, getchannels, getchanneldepths, waveletmatrix, getunitdepths, getdim, gettimes, sortbydepth, rectifytime, stimulusepochs, stimulusintervals, gaborintervals, alignlfp, logwaveletmatrix, matchlfp, joinlfp, catlfp
 
 LFPVector = AbstractDimArray{T, 1, Tuple{A}, B} where {T, A<:DimensionalData.TimeDim, B}
 LFPMatrix = AbstractDimArray{T, 2, Tuple{A, B}} where {T, A<:DimensionalData.TimeDim, B<:Dim{:channel}}
@@ -145,7 +145,7 @@ function _getlfp(session::AbstractSession, probeid::Int; channelidxs=1:length(ge
     if dopermute
         lfp = permutedims(lfp, reverse(1:ndims(lfp)))
     end
-    X = DimArray(lfp, (Ti(timedata),  Dim{:channel}(channelids)))
+    X = DimArray(lfp, (Ti(timedata),  Dim{:channel}(channelids)); metadata=Dict(:sessionid=>getid(session), :probeid=>probeid))
     close(f)
     return X
 end
@@ -463,4 +463,30 @@ function matchlfp(X, Y)
     X = X[Ti(_ts)]
     @assert dims(X, Ti) == dims(Y, Ti)
     return (X, Y)
+end
+
+function intersectlfp(X::AbstractVector)
+    Y = [rectifytime(x; tol=10) for x in X]
+    ts = dims.(Y, Ti)
+    ts = [Interval(extrema(t)...) for t in ts]
+    int = reduce(intersect, ts)
+    Y = [y[Ti(int)] for y in Y]
+
+    ts = dims.(Y, Ti)
+    s = step.(ts)
+    # @assert all(s .== s[1])
+    length = minimum(size.(Y, 1))
+    idxs = 1:length
+    Y = cat([y[idxs, :] for y in Y]..., dims=2)
+end
+
+function catlfp(X::AbstractVector)
+    Y = [rectifytime(x; tol=10) for x in X]
+    ts = dims.(Y, Ti)
+    s = step.(ts)
+    @assert all([dims(Y[1], 2)] .== dims.(Y, (2,)))
+    @assert all(s .≈ s[1])
+    s = s[1]
+    Y = cat(Y..., dims=Ti)
+    set(Y, Ti=>Ti(s:s:s*size(Y, 1)))
 end

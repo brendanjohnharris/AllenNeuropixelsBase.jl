@@ -132,6 +132,9 @@ function getprobe(S::AbstractSession, structure::AbstractString)
     return first(keys(D))
 end
 
+function getprobes(S, structures::Vector)
+    getprobe.((S,), structures)
+end
 
 function getunits(; filter_by_validity=true, amplitude_cutoff_maximum = 0.1, presence_ratio_minimum = 0.9, isi_violations_maximum = 0.5)
     str = ecephyscache().get_units(filter_by_validity=filter_by_validity,
@@ -244,6 +247,8 @@ function getepochs(S::AbstractSession, stimulusname)
     epoch_table = getepochs(S)
     df = subset(epoch_table, :stimulus_name=>ByRow(==(stimulusname)))
 end
+
+getepochs(S::Int, args...; kwargs...) = getepochs(Session(S), args...; kwargs...)
 
 function getstimulustimes(S::Session, stimulusname)
     E = getepochs(S, stimulusname)

@@ -200,6 +200,9 @@ function getlfp(session::AbstractSession, probeid::Int; channels=getlfpchannels(
     end
     if times isa Interval
         timeidxs = findall(timeidxs .∈ (times,))
+        if isempty(timeidxs)
+            @warn "Session $(getid(session)), probe $probeid has no LFP for $(times)"
+        end
     else
         timeidxs = indexin(times, timeidxs)
         timeidxs = filter(!isnothing, timeidxs)

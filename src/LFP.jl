@@ -2,7 +2,7 @@ using IntervalSets
 using HDF5
 using Statistics
 
-export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod, getlfp, getlfptimes, getlfpchannels, samplingrate, WaveletMatrix, LogWaveletMatrix, formatlfp, getchannels, getchanneldepths, waveletmatrix, getunitdepths, getdim, gettimes, sortbydepth, rectifytime, stimulusepochs, stimulusintervals, gaborintervals, alignlfp, logwaveletmatrix, matchlfp, joinlfp, catlfp
+export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod, getlfp, getlfptimes, getlfpchannels, samplingrate, WaveletMatrix, LogWaveletMatrix, formatlfp, getchannels, getchanneldepths, waveletmatrix, getunitdepths, getdim, gettimes, sortbydepth, rectifytime, stimulusepochs, stimulusintervals, gaborintervals, alignlfp, logwaveletmatrix, matchlfp, joinlfp, catlfp, channels2depths
 
 LFPVector = AbstractDimArray{T, 1, Tuple{A}, B} where {T, A<:DimensionalData.TimeDim, B}
 LFPMatrix = AbstractDimArray{T, 2, Tuple{A, B}} where {T, A<:DimensionalData.TimeDim, B<:Dim{:channel}}
@@ -327,6 +327,27 @@ function getchanneldepths(X::LFPMatrix)
     @assert all(haskey.((metadata(X),), (:sessionid, :probeid)))
     S = Session(metadata(X)[:sessionid])
     getchanneldepths(S, metadata(X)[:probeid], X)
+end
+
+function channels2depths(session, probeid::Integer, X::AbstractDimArray, d::Integer)
+    Y = deepcopy(X)
+    _d = d
+    c = dims(Y, _d) |> collect
+    depths = getchanneldepths(session, probeid, c)
+    Y = set(Y, dims(Y, _d)=>Dim{:depth}(depths))
+    Y = reorder(Y, dims(Y, _d)=>DimensionalData.ForwardOrdered)
+    return Y
+end
+function channels2depths(session, probeids::Vector, X::AbstractDimArray, d)
+    Y = deepcopy(X)
+    d = [d...]
+    for (i, _d) in d
+        probeid = probeids[i]
+        c = dims(Y, _d) |> collect
+        depths = getchanneldepths(session, probeid, c)
+        Y = set(Y, dims(Y, _d)=>Dim{:depth}(depths))
+    end
+    return Y
 end
 
 function getunitdepths(session, probeid, units)

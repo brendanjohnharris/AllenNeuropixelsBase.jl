@@ -1,6 +1,6 @@
 using IntervalSets
 
-export ecephyscache, getsessiontable, getprobes, getchannels, listprobes, getsessiondata, AbstractSession, Session, getid, getprobes, getfile, getprobeids, getchannels, getprobecoordinates, getstructureacronyms, getstructureids, getprobestructures, getprobe, getunits, getepochs, getstimuli, getstimulustimes, getunitmetrics, getunitanalysismetrics, getunitanalysismetricsbysessiontype
+export ecephyscache, getsessiontable, getprobes, getchannels, listprobes, getsessiondata, AbstractSession, Session, getid, getprobes, getfile, getprobeids, getchannels, getprobecoordinates, getstructureacronyms, getstructureids, getprobestructures, getprobe, getunits, getepochs, getstimuli, getstimulustimes, getunitmetrics, getunitanalysismetrics, getunitanalysismetricsbysessiontype, isvalid, onlyvalid
 
 function ecephyscache()
     ecephys_project_cache.EcephysProjectCache.from_warehouse(manifest=ecephysmanifest)
@@ -196,6 +196,19 @@ function getunitanalysismetrics(session::AbstractSession; annotate=true, filter_
     py2df(str)
 end
 
+function isvalid(S::AbstractSession, u::AbstractVector)
+    metrics = getunitanalysismetrics(S)
+    return u .∈ (metrics.ecephys_unit_id,)
+end
+
+function onlyvalid(s::AbstractSession, sp::Dict)
+    K = keys(sp) |> collect
+    V = values(sp) |> collect
+    idxs = isvalid(s, (K))
+    K = K[idxs]
+    V = V[idxs]
+    return Dict(k => v for (k, v) in zip(K, V))
+end
 
 function getstimuli(S::Session)
     str =  S.pyObject.stimulus_presentations

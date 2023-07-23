@@ -19,7 +19,9 @@ function getsessionpath(session::AbstractSession)
 end
 
 getspiketimes(S::AbstractSession) = S.pyObject.spike_times |> Dict
+getspiketimes(sessionid::Number, args...) = getspiketimes(Session(sessionid), args...)
 getspikeamplitudes(S::AbstractSession) = S.pyObject.spike_amplitudes |> Dict
+getspikeamplitudes(sessionid::Number, args...) = getspikeamplitudes(Session(sessionid), args...)
 
 function getspiketimes(S::AbstractSession, structure::String)
     unitstructs = getunitmetrics(S)
@@ -199,7 +201,7 @@ subset(d::DataFrame, col, vals::Base.KeySet) = subset(d, col, collect(vals))
 subset(d::DataFrame, col, vals::Dim) = subset(d, col, collect(vals))
 subset(d::DataFrame, col, vals::DataFrame) = subset(d, col, vals[:, col])
 function subset(d::DataFrame, col, val)
-    idxs = d[:, col] .== val
+    idxs = findall(d[:, col] .== val)
     return d[idxs, :]
 end
 export subset

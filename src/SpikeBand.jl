@@ -165,10 +165,10 @@ end
 # end
 
 
-function getreceptivefield(session, unit)
-    rf = stimulusmapping.ReceptiveFieldMapping(session.pyObject)
-    field = rf.get_receptive_field(unit)
-end
+# function getreceptivefield(session, unit)
+#     rf = stimulusmapping.ReceptiveFieldMapping(session.pyObject)
+#     field = rf.get_receptive_field(unit)
+# end
 
 function getisis(x::AbstractSparseDimVector)
     s = findnz(x |> SparseVector)[1]

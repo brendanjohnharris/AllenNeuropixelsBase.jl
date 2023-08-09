@@ -293,9 +293,9 @@ end
 
 # * Stimulus analysis
 
-ReceptiveFieldMapping(S::AbstractSession) = stimulusmapping.ReceptiveFieldMapping(S.pyObject)
+# ReceptiveFieldMapping(S::AbstractSession) = stimulusmapping.ReceptiveFieldMapping(S.pyObject)
 
-function getreceptivefield(S::AbstractSession, channel::Number)
-    rfm = ReceptiveFieldMapping(S)
-    rfm.get_receptive_field(channel)
-end
+# function getreceptivefield(S::AbstractSession, channel::Number)
+#     rfm = ReceptiveFieldMapping(S)
+#     rfm.get_receptive_field(channel)
+# end

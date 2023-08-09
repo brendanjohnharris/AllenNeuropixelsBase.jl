@@ -59,6 +59,9 @@ using Test
     session_id = st[end, :ecephys_session_id]
     session = ANB.Session(session_id)
 
+    test_file = "/home/brendan/OneDrive/Masters/Code/Vortices/Julia/AllenSDK/test/ecephys_session_1152811536.nwb"
+    f = ANB.behavior_ecephys_session.BehaviorSession.from_nwb_path(test_file)
+
     @test_nowarn ANB.getprobes(session)
     probeid = @test_nowarn ANB.getprobeids(session)[2]
     @test_nowarn ANB.getprobestructures(session)[probeid]

@@ -79,7 +79,7 @@ const manifest = datapaths()
 
 
 struct Session <: AbstractSession
-    pyObject
+    pyObject # Should use BehaviorEcephysSession here
     behavior_pyObject
     function Session(pyObject)
         behavior_pyObject = ANB.behaviorcache().get_behavior_session(pyObject.behavior_session_id)

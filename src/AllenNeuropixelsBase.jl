@@ -3,11 +3,9 @@ using PythonCall
 using DataFrames
 using CSV
 using Preferences
+using AllenSDK
 
-const pynwb = PythonCall.pynew()
-const allensdk = PythonCall.pynew()
 const brain_observatory = PythonCall.pynew()
-const ecephys = PythonCall.pynew()
 const stimulusmapping = PythonCall.pynew()
 const ecephys_project_cache = PythonCall.pynew()
 const ecephys_project_api = PythonCall.pynew()
@@ -24,11 +22,8 @@ const behavior_ecephys_session = PythonCall.pynew()
 export allensdk, brain_observatory, ecephys, ecephys_project_cache, mouse_connectivity_cache, ontologies_api, reference_space_cache, reference_space, behavior_ecephys_session, behavior_project_cache
 
 function __init__()
-    PythonCall.pycopy!(pynwb, pyimport("pynwb"))
-    PythonCall.pycopy!(allensdk, pyimport("allensdk"))
     PythonCall.pycopy!(brain_observatory, pyimport("allensdk.brain_observatory"))
     PythonCall.pycopy!(stimulus_info, pyimport("allensdk.brain_observatory.stimulus_info"))
-    PythonCall.pycopy!(ecephys, pyimport("allensdk.brain_observatory.ecephys"))
     PythonCall.pycopy!(stimulusmapping, pyimport("allensdk.brain_observatory.ecephys.stimulus_analysis.receptive_field_mapping"))
     PythonCall.pycopy!(ecephys_project_cache, pyimport("allensdk.brain_observatory.ecephys.ecephys_project_cache"))
     PythonCall.pycopy!(ecephys_project_api, pyimport("allensdk.brain_observatory.ecephys.ecephys_project_api"))

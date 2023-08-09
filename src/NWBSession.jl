@@ -58,18 +58,11 @@ end
 # getid(S::AbstractNWBSession) = pyconvert(Int, S.pyObject.behavior_ecephys_session_id)
 getprobes(S::AbstractNWBSession) = py2df(S.pyObject.probes)
 getchannels(S::AbstractNWBSession) = py2df(S.pyObject.get_channels())
-function getepochs(S::AbstractNWBSession)
-    df = S.pyObject.stimulus_presentations.groupby("stimulus_block").head(1) |> py2df
-    df.stop_time = df.end_time
-    return df
-end
 
 Base.Dict(p::Py) = pyconvert(Dict, p)
 function Base.Dict(d::Dict{T, <:PythonCall.PyArray}) where {T}
     return Dict(k => pyconvert(Array{eltype(v)}, v) for (k, v) in d)
 end
-
-getprobefiles(S::AbstractNWBSession; dataset=VisualBehavior) = dataset.getprobefiles(S)
 
 
 function getprobefile(session::AbstractNWBSession, name::AbstractString)
@@ -84,6 +77,7 @@ function getlfpchannels(session::AbstractNWBSession, probeid::Int)
     _lfp = Dict(f.acquisition)["probe_1108501239_lfp_data"]
     channelids = pyconvert(Vector{Int64}, _lfp.electrodes.to_dataframe().index.values)
 end
+
 
 
 function getlfptimes(session::AbstractNWBSession, probeid::Int)
@@ -114,6 +108,12 @@ function getlfptimes(session::AbstractNWBSession, probeid::Int, i::Interval)
     idxs = idxs[idxs .< pyconvert(Int, timedata.len())]
     ts = getlfptimes(session::AbstractNWBSession, probeid::Int, idxs)
     ts = ts[ts .∈ (i,)]
+end
+
+function getepochs(S::AbstractNWBSession)
+    df = S.pyObject.stimulus_presentations.groupby("stimulus_block").head(1) |> py2df
+    df.stop_time = df.end_time
+    return df
 end
 
 function _getlfp(session::AbstractNWBSession, probeid::Int; channelidxs=1:length(getlfpchannels(session, probeid)), timeidxs=1:length(getlfptimes(session, probeid)))

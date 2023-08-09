@@ -1,5 +1,5 @@
 module VisualBehavior
-using ..AllenNeuropixelsBase
+# using ..AllenNeuropixelsBase
 import ..AllenNeuropixelsBase as ANB
 using PythonCall
 using NWBStream
@@ -7,9 +7,10 @@ using DataFrames
 using Downloads
 using JSON
 import NWBStream.url2df
+import ..AllenNeuropixelsBase: AbstractNWBSession, AbstractSession, py2df
 
 const visualbehavior = "https://visual-behavior-neuropixels-data.s3.us-west-2.amazonaws.com/"
-const visualbehaviorbehaviour = visualbehavior * "visual-behavior-neuropixels/"
+const visualbehaviorbehavior = visualbehavior * "visual-behavior-neuropixels/"
 
 """
     getmanifesturl(manifest_version="0.4.0")
@@ -24,7 +25,7 @@ Other manifest version numbers can be identified here: https://s3.console.aws.am
 """
 function getmanifesturl(manifest_version="0.4.0")
     object_key = "manifests/visual-behavior-neuropixels_project_manifest_v$manifest_version.json"
-    return visualbehaviorbehaviour * object_key
+    return visualbehaviorbehavior * object_key
 end
 
 function getmanifest(args...)
@@ -76,11 +77,33 @@ end
 
 const manifest = datapaths()
 
+
+struct Session <: AbstractSession
+    pyObject
+    behavior_pyObject
+    function Session(pyObject)
+        behavior_pyObject = ANB.behaviorcache().get_behavior_session(pyObject.behavior_session_id)
+        new(pyObject, behavior_pyObject)
+    end
+end
+function Session(session_id::Int; kwargs...)
+    ANB.getsessiondata(session_id; kwargs...) |> Session
+end
+Session(; params...) = Session(params[:sessionid]);
+
+
 getprobes() = manifest["project_metadata"]["probes.csv"] |> url2df
 getchannels() = manifest["project_metadata"]["channels.csv"] |> url2df
+ANB.getid(S::Session) = pyconvert(Int, S.pyObject.metadata["ecephys_session_id"])
+getbehaviorid(S::Session) = pyconvert(Int, S.pyObject.behavior_session_id)
+
+function ANB.getchannels(S::Session, args...; kwargs...)
+    df = py2df(S.pyObject.get_channels())
+    ANB.getchannels(df, args...; kwargs...)
+end
 
 const sources = Dict(
-    :Allen_neuropixels_visual_behaviour => "https://visual-behavior-neuropixels-data.s3.us-west-2.amazonaws.com"
+    :Allen_neuropixels_visual_behavior => "https://visual-behavior-neuropixels-data.s3.us-west-2.amazonaws.com"
 )
 
 
@@ -137,7 +160,6 @@ function getprobefiles()
 end
 getprobefiles(S::AbstractNWBSession) = getprobefiles()[string(ANB.getid(S))]
 
-
 function getprobefile(session::AbstractNWBSession, name::AbstractString)
     files = getprobefiles(session)
     return files["probe_$(name)_lfp.nwb"]
@@ -145,7 +167,11 @@ end
 
 getprobefile(session::AbstractNWBSession, probeid::Int) = getprobefile(session, first(subset(getprobes(session), :ecephys_probe_id => ByRow(==(probeid))).name))
 
-
+function ANB.getepochs(S::Session)
+    df = S.pyObject.stimulus_presentations.groupby("stimulus_block").head(1) |> py2df
+    df.stop_time = df.end_time
+    return df
+end
 
 # * The goal is now to copy all of the convenience functions in AllenAttention.jl to here...
 
@@ -155,7 +181,7 @@ getprobefile(session::AbstractNWBSession, probeid::Int) = getprobefile(session, 
 # See from allensdk.brain_observatory.behavior.behavior_project_cache import VisualBehaviorNeuropixelsProjectCache
 # All the api above should go into allen neuropixels. This here is a small package.
 
-Session(sessionid::Int) = sessionid |> getsessionfile |> ANB.S3Session
+# Session(sessionid::Int) = sessionid |> getsessionfile |> ANB.Session
 
 # function getlfp(session::S3Session, probeid::Int; channels=getlfpchannels(session, probeid), times=ClosedInterval(extrema(getlfptimes(session, probeid))...), inbrain=false)
 # end

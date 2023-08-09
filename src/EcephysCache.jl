@@ -1,9 +1,12 @@
 using IntervalSets
 
-export ecephyscache, getsessiontable, getprobes, getchannels, listprobes, getsessiondata, AbstractSession, Session, getid, getprobes, getfile, getprobeids, getchannels, getprobecoordinates, getstructureacronyms, getstructureids, getprobestructures, getprobe, getunits, getepochs, getstimuli, getstimulustimes, getunitmetrics, getunitanalysismetrics, getunitanalysismetricsbysessiontype, isvalid, onlyvalid
+export ecephyscache, behaviorcache, getsessiontable, getprobes, getchannels, listprobes, getsessiondata, AbstractSession, Session, getid, getprobes, getfile, getprobeids, getchannels, getprobecoordinates, getstructureacronyms, getstructureids, getprobestructures, getprobe, getunits, getepochs, getstimuli, getstimulustimes, getunitmetrics, getunitanalysismetrics, getunitanalysismetricsbysessiontype, isvalid, onlyvalid
 
 function ecephyscache()
     ecephys_project_cache.EcephysProjectCache.from_warehouse(manifest=ecephysmanifest)
+end
+function behaviorcache()
+    behavior_project_cache.VisualBehaviorNeuropixelsProjectCache.from_s3_cache(cache_dir=behaviormanifest)
 end
 
 """
@@ -43,10 +46,14 @@ export listprobes
 
 
 function getsessiondata(session_id::Int; filter_by_validity=true, amplitude_cutoff_maximum = 0.1, presence_ratio_minimum = 0.9, isi_violations_maximum = 0.5)
-    ecephyscache().get_session_data(session_id; filter_by_validity=filter_by_validity,
+    if session_id > 1000000000
+        behaviorcache().get_ecephys_session(session_id)
+    else
+        ecephyscache().get_session_data(session_id; filter_by_validity=filter_by_validity,
                             amplitude_cutoff_maximum=amplitude_cutoff_maximum,
                             presence_ratio_minimum=presence_ratio_minimum,
                             isi_violations_maximum=isi_violations_maximum)
+    end
 end
 export getsessiondata
 
@@ -69,14 +76,24 @@ getid(S::AbstractSession) = pyconvert(Int, S.pyObject.ecephys_session_id)
 getprobes(S::AbstractSession) = py2df(S.pyObject.probes)
 getfile(S::AbstractSession) = datadir*"Ecephys/session_"*string(getid(S))*"/session_"*string(getid(S))*".nwb"
 getprobeids(S::AbstractSession) = getprobes(S)[!, :id]
-function getchannels(S::AbstractSession)
-    df = py2df(S.pyObject.channels)
-    df.structure_acronym = df.ecephys_structure_acronym
+function getchannels(df::DataFrame)
+    if hasproperty(df, :ecephys_structure_acronym)
+        df.structure_acronym = df.ecephys_structure_acronym
+    elseif hasproperty(df, :structure_acronym)
+        df.ecephys_structure_acronym = df.structure_acronym
+    end
     return df
 end
+function getchannels(df::DataFrame, probeid::Number)
+    subset(df, :probe_id=>ByRow(==(probeid)))
+end
+function getchannels(S::AbstractSession)
+    df = py2df(S.pyObject.channels)
+    return getchannels(df)
+end
 function getchannels(S::AbstractSession, probeid)
-    c = getchannels(S)
-    c = subset(c, :probe_id=>ByRow(==(probeid)))
+    df = getchannels(S)
+    getchannels(df, probeid)
 end
 function getprobecoordinates(S::AbstractSession)
     c = subset(getchannels(S),              :anterior_posterior_ccf_coordinate => ByRow(!ismissing),

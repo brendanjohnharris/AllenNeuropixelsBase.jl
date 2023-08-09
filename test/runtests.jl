@@ -8,7 +8,7 @@ using AllenNeuropixelsBase.DataFrames
     s3close(io)
 end
 
-@testset "Visual Behaviour" begin
+@testset "Stream Visual Behavior" begin
     st = @test_nowarn ANB.VisualBehavior.getsessiontable()
     @test st isa DataFrame
     session_id = st[2, :ecephys_session_id]
@@ -37,6 +37,41 @@ end
 #     formatlfp(; params...)
 # end
 
+@testset "HybridSession" begin
+    st = @test_nowarn ANB.VisualBehavior.getsessiontable()
+    @test st isa DataFrame
+    session_id = st[2, :ecephys_session_id]
+    session = ANB.HybridSession(session_id)
+    ANB.initialize!(session)
+
+    ANB.getprobes(session)
+    ANB.getprobeids(session)
+    @test_nowarn ANB.listprobes(session)
+    @test_nowarn ANB.getepochs(session)
+end
+
+if false
+import AllenNeuropixelsBase as ANB
+using Test
+@testset "Visual Behavior" begin
+    st = @test_nowarn ANB.VisualBehavior.getsessiontable()
+    # @test st isa DataFrame
+    session_id = st[end, :ecephys_session_id]
+    session = ANB.Session(session_id)
+
+    @test_nowarn ANB.getprobes(session)
+    probeid = @test_nowarn ANB.getprobeids(session)[2]
+    @test_nowarn ANB.getprobestructures(session)[probeid]
+    @test_nowarn ANB.listprobes(session)
+    @test_nowarn ANB.getepochs(session)
+    @test_nowarn ANB.getprobes(session)
+
+    # Now try to get some LFP data
+    ANB._getlfp(session, probeid; channelidxs=1:length(ANB.getlfpchannels(session, probeid)), timeidxs=1:length(getlfptimes(session, probeid)))
+
+    ANB.getlfp(session, "VISp")
+end
+end
 
 s3clear()
 

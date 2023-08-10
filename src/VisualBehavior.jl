@@ -6,6 +6,7 @@ using NWBStream
 using DataFrames
 using Downloads
 using JSON
+using HDF5
 import NWBStream.url2df
 import ..AllenNeuropixelsBase: AbstractNWBSession, AbstractSession, py2df
 
@@ -79,7 +80,7 @@ const manifest = datapaths()
 
 
 struct Session <: AbstractSession
-    pyObject # Should use BehaviorEcephysSession here
+    pyObject
     behavior_pyObject
     function Session(pyObject)
         behavior_pyObject = ANB.behaviorcache().get_behavior_session(pyObject.behavior_session_id)
@@ -106,10 +107,35 @@ const sources = Dict(
     :Allen_neuropixels_visual_behavior => "https://visual-behavior-neuropixels-data.s3.us-west-2.amazonaws.com"
 )
 
+function ANB.getlfppath(session::Session, probeid)
+    probe = ANB.getprobeobj(session, probeid)
+    @assert pyconvert(Int, probe.id) == probeid
+    name = probe.name
+    path = pyconvert(String, probe._lfp_meta.lfp_csd_filepath()._str)
+end
 
+function ANB.isinvalidtime(session::Session, probeids=getprobeids(session), times=NaN)
+    # paths = ANB.getlfppath.((session,), probeids)
+    # for path in paths
+    #     f = h5open(path)
+    # end
+    false # no invalid times for VBN as far as I can see
+end
+
+function ANB.getlfptimes(session::Session, probeid)
+    path = ANB.getlfppath(session, probeid)
+    if !isfile(path)
+        @error "Probe lfp data file does not exist. This may be becuase you have not downloaded the probe data. Try using `getlfp`"
+    end
+
+    f = h5open(path)
+    stem = ANB.resolvenwblfp(session, probeid)
+    times = f["acquisition"][stem][stem*"_data"]["timestamps"][:]
+    close(f)
+    return times
+end
 
 S3Session(session_id::Int, args...; kwargs...) = ANB.S3Session(getsessionfile(session_id), args...; kwargs...)
-
 
 """
     getsessionfiles()
@@ -194,3 +220,4 @@ end
 
 end
 export VisualBehavior
+getprobefiles(S::AbstractNWBSession; dataset=VisualBehavior) = dataset.getprobefiles(S)

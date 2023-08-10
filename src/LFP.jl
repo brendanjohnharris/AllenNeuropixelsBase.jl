@@ -71,10 +71,6 @@ function structure2probe(S::AbstractSession, structure::String)
     return channels.probe_id |> unique |> first
 end
 
-function getlfppath(session::AbstractSession, probeid)
-    path = joinpath(datadir, "Ecephys", "session_"*string(getid(session)), "probe_"*string(probeid)*"_lfp.nwb");
-end
-
 function getlfptimes(session::AbstractSession, probeid)
     path = getlfppath(session, probeid)
     if !isfile(path)
@@ -105,6 +101,17 @@ function getlfpchannels(session::AbstractSession, probeid)
     return channels
 end
 
+function getprobeobj(S::AbstractSession, probeid)
+    probes = S.pyObject.get_probes_obj()
+    probeids = [pyconvert(Int, probe.id) for probe in probes.probes]
+    thisprobe = findfirst(probeids .== probeid)-1
+    probe = probes.probes[thisprobe]
+end
+
+function resolvenwblfp(S::AbstractSession, probeid)
+    probe = getprobeobj(S, probeid)
+    res = "probe_$(probeid)_lfp"
+end
 
 """
 Get the lfp data for a probe, providing *indices* for channels and times. See function below for indexing by channel ids and time values/intervals
@@ -126,14 +133,15 @@ function _getlfp(session::AbstractSession, probeid::Int; channelidxs=1:length(ge
     dopermute = true
     channelids = getlfpchannels(session, probeid)
     channelids = channelids[channelidxs]
+    res = resolvenwblfp(session, probeid)
     if (channelidxs isa Union{Int64, AbstractRange{Int64}}) & (timeidxs isa Union{Int64, AbstractRange{Int64}}) # Can use HDF5 slicing
-        lfp = f["acquisition"][splitext(basename(path))[1]][splitext(basename(path))[1]*"_data"]["data"][channelidxs, timeidxs]
+        lfp = f["acquisition"][res][res*"_data"]["data"][channelidxs, timeidxs]
     elseif timeidxs isa Union{Int64, AbstractRange{Int64}}
-        lfp = [f["acquisition"][splitext(basename(path))[1]][splitext(basename(path))[1]*"_data"]["data"][i, timeidxs] for i ∈ channelidxs]
+        lfp = [f["acquisition"][res][res*"_data"]["data"][i, timeidxs] for i ∈ channelidxs]
         lfp = hcat(lfp...)
         dopermute = false
     else
-        lfp = read(f["acquisition"][splitext(basename(path))[1]][splitext(basename(path))[1]*"_data"]["data"])
+        lfp = read(f["acquisition"][res][res*"_data"]["data"])
         lfp = lfp[channelidxs, timeidxs]
     end
     if lfp isa Vector
@@ -152,7 +160,7 @@ end
 
 
 function isinvalidtime(session::AbstractSession, probeids=getprobeids(session), times=NaN)
-    if isempty(session.pyObject.get_invalid_times()) # No invalid times in this session!
+    if hasproperty(session.pyObject, :get_invalid_times) && isempty(session.pyObject.get_invalid_times()) # No invalid times in this session!
         return false
     end
     intervals = [session.pyObject.get_invalid_times().start_time.values, session.pyObject.get_invalid_times().stop_time.values]
@@ -217,7 +225,7 @@ function getlfp(session::AbstractSession, probeid::Int; channels=getlfpchannels(
         channelidxs = UnitRange(extrema(channelidxs)...)
     end
 
-    @info "Accessing LFP data"
+    @info "Accessing LFP data for session $(getid(session))"
     _getlfp(session, probeid; channelidxs, timeidxs)
 end
 
@@ -257,12 +265,7 @@ function getlfp(session, probeids::Vector{Int}, args...; kwargs...)
     LFP = [getlfp(session, probeid, args...; kwargs...) for probeid ∈ probeids]
 end
 
-function formatlfp(; tol=6, sessionid=757216464, probeid=769322749, stimulus="gabors", structure="VISp", epoch=:longest, kwargs...)
-    if sessionid < 1000000000
-        session = Session(sessionid)
-    else
-        session = VisualBehavior.S3Session(sessionid)
-    end
+function formatlfp(session::AbstractSession; probeid,  tol=6, stimulus="gabors", structure="VISp", epoch=:longest, kwargs...)
     if isnothing(structure)
         structure = getchannels(session, probeid).id |> getstructureacronyms |> unique |> skipmissing |> collect |> Vector{String}
     end
@@ -282,7 +285,16 @@ function formatlfp(; tol=6, sessionid=757216464, probeid=769322749, stimulus="ga
         X = rectifytime(getlfp(session, probeid, structure; inbrain=200, times); tol)
     end
     X = sortbydepth(session, probeid, X)
-    X = DimArray(X; metadata=Dict(:sessionid=>sessionid, :probeid=>probeid, :stimulus=>stimulus, :structure=>structure))
+    X = DimArray(X; metadata=Dict(:sessionid=>getid(session), :probeid=>probeid, :stimulus=>stimulus, :structure=>structure))
+end
+
+function formatlfp(; sessionid=757216464, probeid=769322749, kwargs...)
+    if sessionid < 1000000000
+        session = Session(sessionid)
+    else
+        session = VisualBehavior.Session(sessionid)
+    end
+    formatlfp(session; probeid, kwargs...)
 end
 export formatlfp
 
@@ -310,7 +322,12 @@ end
 # end
 function _getchanneldepths(cdf, channels)
     # surfaceposition = minimum(subset(cdf, :structure_acronym=>ByRow(ismissing)).probe_vertical_position) # Minimum because tip is at 0
-    surfaceposition = maximum(subset(cdf, :structure_acronym=>ByRow(ismissing)).dorsal_ventral_ccf_coordinate)
+
+    if any(cdf.structure_acronym .== ["root"]) # For VBN files, "root" rather than "missing"
+        surfaceposition = maximum(subset(cdf, :structure_acronym=>ByRow(==("root"))).dorsal_ventral_ccf_coordinate)
+    else
+        surfaceposition = maximum(subset(cdf, :structure_acronym=>ByRow(ismissing)).dorsal_ventral_ccf_coordinate)
+    end
     # Assume the first `missing` channel corresponds to the surfaceprobe_vertical_position
     idxs = indexin(channels, cdf.id)[:]
     # alldepths = surfaceposition .- cdf.probe_vertical_position # in μm

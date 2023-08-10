@@ -291,6 +291,11 @@ function getstimulustimes(; params...)
     getstimulustimes(S, params[:stimulus])[params[:epoch]]
 end
 
+function getlfppath(session::AbstractSession, probeid)
+    path = joinpath(datadir, "Ecephys", "session_"*string(getid(session)), "probe_"*string(probeid)*"_lfp.nwb");
+end
+
+
 # * Stimulus analysis
 
 # ReceptiveFieldMapping(S::AbstractSession) = stimulusmapping.ReceptiveFieldMapping(S.pyObject)

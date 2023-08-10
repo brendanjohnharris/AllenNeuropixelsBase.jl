@@ -59,8 +59,8 @@ using Test
     session_id = st[end, :ecephys_session_id]
     session = ANB.Session(session_id)
 
-    test_file = "/home/brendan/OneDrive/Masters/Code/Vortices/Julia/AllenSDK/test/ecephys_session_1152811536.nwb"
-    f = ANB.behavior_ecephys_session.BehaviorSession.from_nwb_path(test_file)
+    # test_file = "/home/brendan/OneDrive/Masters/Code/Vortices/Julia/AllenSDK/test/ecephys_session_1152811536.nwb"
+    # f = ANB.behavior_ecephys_session.BehaviorSession.from_nwb_path(test_file)
 
     @test_nowarn ANB.getprobes(session)
     probeid = @test_nowarn ANB.getprobeids(session)[2]
@@ -70,9 +70,20 @@ using Test
     @test_nowarn ANB.getprobes(session)
 
     # Now try to get some LFP data
-    ANB._getlfp(session, probeid; channelidxs=1:length(ANB.getlfpchannels(session, probeid)), timeidxs=1:length(getlfptimes(session, probeid)))
+    ANB._getlfp(session, probeid; channelidxs=1:length(ANB.getlfpchannels(session, probeid)), timeidxs=1:length(ANB.getlfptimes(session, probeid)));
 
-    ANB.getlfp(session, "VISp")
+    structure = ANB.getprobestructures(session)[probeid]
+    structure = structure[occursin.(("VIS",), string.(structure))|>findfirst]
+
+    channels = @test_nowarn ANB.getlfpchannels(session, probeid)
+    cdf = @test_nowarn ANB.getchannels(session, probeid)
+    ANB._getchanneldepths(cdf, channels)
+    depths = @test_nowarn ANB.getchanneldepths(session, probeid, channels)
+
+    ANB.getlfp(session, structure);
+    a = ANB.formatlfp(session; probeid, stimulus="spontaneous", structure=structure, epoch=:longest);
+    b = ANB.formatlfp(; sessionid=session_id, probeid, stimulus="spontaneous", structure=structure, epoch=:longest); # Slower, has to build the session
+    @assert a == b
 end
 end
 

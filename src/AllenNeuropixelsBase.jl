@@ -80,16 +80,15 @@ export convertdataframe
 
 include("./EcephysCache.jl")
 include("./BrainObservatory.jl")
-include("./NWBSession.jl")
-include("./VisualBehavior.jl")
-getprobefiles(S::AbstractNWBSession; dataset=VisualBehavior) = dataset.getprobefiles(S)
 # include("./HybridSession.jl")
 include("./SparseDimArray.jl")
 include("./MouseConnectivityCache.jl")
 include("./Ontologies.jl")
 include("./ReferenceSpace.jl")
+include("./NWBSession.jl")
 include("./LFP.jl")
 include("./SpikeBand.jl")
+include("./VisualBehavior.jl")
 include("./Behaviour.jl")
 
 end

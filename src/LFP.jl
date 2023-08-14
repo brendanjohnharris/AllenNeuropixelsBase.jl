@@ -102,15 +102,15 @@ function getlfpchannels(session::AbstractSession, probeid)
 end
 
 function getprobeobj(S::AbstractSession, probeid)
-    probes = S.pyObject.get_probes_obj()
-    probeids = [pyconvert(Int, probe.id) for probe in probes.probes]
-    thisprobe = findfirst(probeids .== probeid)-1
-    probe = probes.probes[thisprobe]
+    probes = S.pyObject.probes |> py2df
+    probeids = probes.id
+    thisprobe = findfirst(probeids .== probeid)
+    probe = probes[thisprobe, :]
 end
 
 function resolvenwblfp(S::AbstractSession, probeid)
     probe = getprobeobj(S, probeid)
-    res = "probe_$(probeid)_lfp"
+    res = "probe_$(probe.id)_lfp"
 end
 
 """
@@ -265,9 +265,13 @@ function getlfp(session, probeids::Vector{Int}, args...; kwargs...)
     LFP = [getlfp(session, probeid, args...; kwargs...) for probeid ∈ probeids]
 end
 
-function formatlfp(session::AbstractSession; probeid,  tol=6, stimulus="gabors", structure="VISp", epoch=:longest, kwargs...)
+function formatlfp(session::AbstractSession; probeid=nothing,  tol=6, stimulus="gabors", structure="VISp", epoch=:longest, kwargs...)
+    if isnothing(probeid)
+        probeid = getprobe(session, structure)
+    end
     if isnothing(structure)
-        structure = getchannels(session, probeid).id |> getstructureacronyms |> unique |> skipmissing |> collect |> Vector{String}
+        structure = getstructureacronyms(session, getchannels(session, probeid).id) |> unique |> skipmissing |> collect |> Vector{String}
+        structure = structure[structure .!= ["root"]]
     end
     if stimulus == "all"
         X = rectifytime(getlfp(session, probeid, structure; inbrain=200); tol)
@@ -288,7 +292,7 @@ function formatlfp(session::AbstractSession; probeid,  tol=6, stimulus="gabors",
     X = DimArray(X; metadata=Dict(:sessionid=>getid(session), :probeid=>probeid, :stimulus=>stimulus, :structure=>structure))
 end
 
-function formatlfp(; sessionid=757216464, probeid=769322749, kwargs...)
+function formatlfp(; sessionid=757216464, probeid=nothing, kwargs...)
     if sessionid < 1000000000
         session = Session(sessionid)
     else
@@ -323,10 +327,10 @@ end
 function _getchanneldepths(cdf, channels)
     # surfaceposition = minimum(subset(cdf, :structure_acronym=>ByRow(ismissing)).probe_vertical_position) # Minimum because tip is at 0
 
-    if any(cdf.structure_acronym .== ["root"]) # For VBN files, "root" rather than "missing"
-        surfaceposition = maximum(subset(cdf, :structure_acronym=>ByRow(==("root"))).dorsal_ventral_ccf_coordinate)
-    else
+    if any(ismissing.(cdf.structure_acronym))
         surfaceposition = maximum(subset(cdf, :structure_acronym=>ByRow(ismissing)).dorsal_ventral_ccf_coordinate)
+    elseif any(skipmissing(cdf.structure_acronym) .== ["root"]) # For VBN files, "root" rather than "missing"
+        surfaceposition = maximum(subset(cdf, :structure_acronym=>ByRow(==("root"))).dorsal_ventral_ccf_coordinate)
     end
     # Assume the first `missing` channel corresponds to the surfaceprobe_vertical_position
     idxs = indexin(channels, cdf.id)[:]

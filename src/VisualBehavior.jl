@@ -158,7 +158,12 @@ end
 
 getsessionfile(session_id::Int, args...) = getsessionfiles(args...)["$session_id"]
 
-getsessiontable() = manifest["project_metadata"]["ecephys_sessions.csv"] |> url2df
+function getsessiontable()
+    st = manifest["project_metadata"]["ecephys_sessions.csv"] |> url2df
+    st.structure_acronyms = [replace.(split(a, ','), r"[\[\]\'\s]"=>"") for a in st.structure_acronyms]
+    st.ecephys_structure_acronyms = st.structure_acronyms
+    return st
+end
 getunits() = manifest["project_metadata"]["units.csv"] |> url2df
 function getunitanalysismetricsbysessiontype()
     session_table = ANB.VisualBehavior.getsessiontable()
@@ -215,7 +220,28 @@ end
 # VisualBehaviorNeuropixelsProjectCache = ANB.behavior_project_cache.behavior_neuropixels_project_cache.VisualBehaviorNeuropixelsProjectCache
 # VisualBehaviorNeuropixelsProjectCache.from_s3_cache(mktempdir())
 
+function ANB.getchannels(S::Session)
+    s = py2df(S.pyObject.get_channels())
+end
 
+
+function getunitanalysismetrics()
+    session_table = ANB.VisualBehavior.getsessiontable()
+    metrics = ANB.behaviorcache().get_unit_table() |> py2df
+    metrics = outerjoin(metrics, session_table; on=:ecephys_session_id)
+end
+
+function ANB.getunitmetrics(session::Session)
+    str = session.pyObject.get_units()
+    py2df(str)
+end
+
+function ANB.getprobeobj(S::Session, probeid)
+    probes = S.pyObject.get_probes_obj()
+    probeids = [pyconvert(Int, probe.id) for probe in probes.probes]
+    thisprobe = findfirst(probeids .== probeid)-1
+    probe = probes.probes[thisprobe]
+end
 
 
 end

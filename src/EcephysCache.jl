@@ -123,6 +123,16 @@ function getstructureacronyms(channelids::Vector{Int})
     return acronyms
 end
 
+getchannels(S::AbstractSession) = py2df(S.pyObject.channels)
+
+function getstructureacronyms(S::AbstractSession, channelids::Vector{Int})
+    channels = getchannels(S)
+    acronyms = Vector{Any}(undef, size(channelids))
+    [acronyms[i] = notemptyfirst(channels[channels.id.==channelids[i], :structure_acronym]) for i ∈ 1:length(channelids)]
+    return acronyms
+end
+
+
 function getstructureids(channelids::Vector{Int})
     channels = getchannels()
     acronyms = Vector{Any}(undef, size(channelids))

@@ -123,8 +123,6 @@ function getstructureacronyms(channelids::Vector{Int})
     return acronyms
 end
 
-getchannels(S::AbstractSession) = py2df(S.pyObject.channels)
-
 function getstructureacronyms(S::AbstractSession, channelids::Vector{Int})
     channels = getchannels(S)
     acronyms = Vector{Any}(undef, size(channelids))
@@ -237,10 +235,11 @@ function onlyvalid(s::AbstractSession, sp::Dict)
     return Dict(k => v for (k, v) in zip(K, V))
 end
 
-function getstimuli(S::Session)
+function getstimuli(S::AbstractSession)
     str =  S.pyObject.stimulus_presentations
     py2df(str)
 end
+getstimulus = getstimuli
 
 function getunitmetrics(session::AbstractSession)
     str = session.pyObject.units
@@ -283,6 +282,10 @@ function getepochs(S::Session)
     PyPandasDataFrame(p) |> DataFrame
 end
 
+function getepochs(S::AbstractSession, stimulusname::Regex)
+    epoch_table = getepochs(S)
+    df = subset(epoch_table, :stimulus_name=>ByRow(x->!isnothing(match(stimulusname, x))))
+end
 function getepochs(S::AbstractSession, stimulusname)
     epoch_table = getepochs(S)
     df = subset(epoch_table, :stimulus_name=>ByRow(==(stimulusname)))

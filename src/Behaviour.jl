@@ -1,13 +1,27 @@
 using Dierckx
+import TimeseriesTools: TimeSeries
 
 export getrunningspeed, smoothrunningspeed, getstimuli, stimulustrace
+export gettrials, getlicks, getrewards, geteyetracking, getrunningspeed, getbehavior, getpupilarea
 
-function getrunningspeed(S::AbstractSession)
-    f = h5open(getfile(S), "r")
-    r = f["processing"]["running"]["running_speed"]["data"] |> read
-    ts = f["processing"]["running"]["running_speed"]["timestamps"] |> read
-    return DimArray(r, (Ti(ts),); metadata=Dict(:sessionid=>getid(S)))
-end
+_getrunningspeed(S::AbstractSession) = S.pyObject.running_speed |> py2df
+geteyetracking(S::AbstractSession) = S.pyObject.eye_tracking |> py2df
+
+
+
+getrunningspeed(S::AbstractSession) = (df = _getrunningspeed(S); TimeSeries(df.timestamps, df.speed)) # ? Units
+getpupilarea(S::AbstractSession) = (df = geteyetracking(S); TimeSeries(df.timestamps, df.pupil_area))
+
+
+
+
+# function getrunningspeed(S::AbstractSession)
+#     f = h5open(getfile(S), "r")
+#     r = f["processing"]["running"]["running_speed"]["data"] |> read
+#     ts = f["processing"]["running"]["running_speed"]["timestamps"] |> read
+#     return DimArray(r, (Ti(ts),); metadata=Dict(:sessionid=>getid(S)))
+# end
+
 
 function smoothrunningspeed(S::AbstractSession; windowfunc=hanning, window=1)
     r = getrunningspeed(S)
@@ -64,3 +78,12 @@ end
 # 	x = interpmatch(x, y)
 # 	r = corspearman(x, y)
 # end
+
+
+# Consistent behaviour api
+function gettrials end
+function getlicks end
+function getrewards end
+function geteyetracking end
+function getrunningspeed end
+function getbehavior end

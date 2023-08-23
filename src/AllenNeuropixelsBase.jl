@@ -88,7 +88,7 @@ include("./ReferenceSpace.jl")
 include("./NWBSession.jl")
 include("./LFP.jl")
 include("./SpikeBand.jl")
-include("./VisualBehavior.jl")
 include("./Behaviour.jl")
+include("./VisualBehavior.jl")
 
 end

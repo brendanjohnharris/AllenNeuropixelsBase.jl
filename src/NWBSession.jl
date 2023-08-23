@@ -50,7 +50,11 @@ function py2df(p)
     # if hasfield(p, :index)
         index = p.index
         index = pyconvert(Vector{Int64}, index)
-        df[!, string(p.index.name)] = index
+        if string(p.index.name) == "None"
+            df[!, "Index"] = index
+        else
+            df[!, string(p.index.name)] = index
+        end
     # end
     return df[!, [end, (1:size(df, 2)-1)...]]
 end

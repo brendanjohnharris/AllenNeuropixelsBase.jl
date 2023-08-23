@@ -277,6 +277,15 @@ function formatlfp(session::AbstractSession; probeid=nothing,  tol=6, stimulus="
         X = rectifytime(getlfp(session, probeid, structure; inbrain=200); tol)
     else
         epochs = getepochs(session, stimulus)
+        isempty(epochs) && (@error "No '$stimulus' epoch found in session $(getid(session))")
+        if !(epoch isa Symbol) && length(epoch) > 1
+            qualifier = epoch[2]
+            epoch = epoch[1]
+            _epochs = subset(epochs, qualifier=>ByRow(==(true)))
+            if !isempty(_epochs)
+                epochs = _epochs
+            end
+        end
         if epoch == :longest
             _, epoch = findmax(epochs.duration)
         elseif epoch == :first
@@ -468,6 +477,27 @@ For flashes alignment, `trail=false` will return only the data from within the f
 """
 function alignlfp(session, X, ::Val{:flashes}; trail=true)
     is = stimulusintervals(session, "flashes")
+    if trail == :onset
+        onsets = is.start_time
+        is = [onsets[i]..onsets[i+1] for i in 1:length(onsets)-1]
+    elseif trail == :offset
+        offsets = is.stop_time
+        onsets = is.start_time[2:end]
+        is = [offsets[i]..onsets[i] for i in 1:length(offsets)-1]
+    else
+        is = is.interval
+    end
+    X = rectifytime(X)
+    _X = [X[Ti(g)] for g in is]
+    _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X] # Catch any that are one sample too long
+    return _X
+end
+
+"""
+For flashed images alignment, `trail=false` will return only the data from within the flash period. `trail=onset` will return the data from the onset of the flash to the onset of the flash through to the onset of the next flash. `trail=offset` will return the data from the offset of the flash to the onset of the next flash.
+"""
+function alignlfp(session, X, ::Val{:xxxxxx}; trail=true)
+    is = stimulusintervals(session, "xxxxxxx")
     if trail == :onset
         onsets = is.start_time
         is = [onsets[i]..onsets[i+1] for i in 1:length(onsets)-1]

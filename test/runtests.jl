@@ -84,6 +84,14 @@ using Test
     a = ANB.formatlfp(session; probeid, stimulus="spontaneous", structure=structure, epoch=:longest);
     b = ANB.formatlfp(; sessionid=session_id, probeid, stimulus="spontaneous", structure=structure, epoch=:longest); # Slower, has to build the session
     @assert a == b
+
+    # Test behavior data
+    @test ANB.gettrials(S) isa DataFrame
+    @test ANB.getlicks(S) isa DataFrame
+    @test ANB.getrewards(S) isa DataFrame
+    @test ANB.getstimuli(S) isa DataFrame
+    @test ANB.getrunningspeed(S) isa DataFrame
+    @test ANB.geteyetracking(S) isa DataFrame
 end
 end
 

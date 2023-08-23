@@ -7,6 +7,8 @@ using DataFrames
 using Downloads
 using JSON
 using HDF5
+using IntervalSets
+using TimeseriesTools
 import NWBStream.url2df
 import ..AllenNeuropixelsBase: AbstractNWBSession, AbstractSession, py2df
 
@@ -199,7 +201,17 @@ end
 getprobefile(session::AbstractNWBSession, probeid::Int) = getprobefile(session, first(subset(getprobes(session), :ecephys_probe_id => ByRow(==(probeid))).name))
 
 function ANB.getepochs(S::Session)
-    df = S.pyObject.stimulus_presentations.groupby("stimulus_block").head(1) |> py2df
+    df = S.pyObject.stimulus_presentations |> py2df
+    df.interval = [a..b for (a, b) in zip(df.start_time, df.end_time)]
+    df = groupby(df, :stimulus_block)
+    _intersect(x) = minimum(minimum.(x))..maximum(maximum.(x))
+    df = DataFrames.combine(df, :interval => _intersect => :interval,
+                            :active => unique => :active,
+                            :stimulus_block => unique => :stimulus_block,
+                            :stimulus_name => unique => :stimulus_name)
+    df.start_time = minimum.(df.interval)
+    df.end_time = maximum.(df.interval)
+    df.duration = df.end_time - df.start_time
     df.stop_time = df.end_time
     return df
 end
@@ -242,6 +254,42 @@ function ANB.getprobeobj(S::Session, probeid)
     thisprobe = findfirst(probeids .== probeid)-1
     probe = probes.probes[thisprobe]
 end
+
+
+
+## Behavior metrics
+import AllenNeuropixelsBase: gettrials, getlicks, getrewards, geteyetracking, getrunningspeed, getbehavior
+function gettrials(S::Session)
+    df = S.pyObject.trials |> py2df
+    df.interval = [a..b for (a, b) in zip(df.start_time, df.stop_time)]
+    return df
+end
+getlicks(S::Session) = S.pyObject.licks |> py2df
+getrewards(S::Session) = S.pyObject.rewards |> py2df
+geteyetracking(S::Session) = S.pyObject.eye_tracking |> py2df
+_getrunningspeed(S::Session) = S.pyObject.running_speed |> py2df
+
+function _getbehavior(S::Session)
+    fs = (gettrials, getlicks, getrewards, geteyetracking, getrunningspeed)
+    dfs = [f(S) for f in fs]
+end
+
+function getstimulitrace(session; blanks=true)
+    df = ANB.getstimuli(session)
+    x = TimeseriesTools.TimeSeries(df.start_time, df.image_name)
+    y = TimeseriesTools.TimeSeries(df.end_time, df.image_name)
+    if blanks
+        xx = TimeseriesTools.TimeSeries(times(x).-1/1250, fill("blank", length(x)))
+        yy = TimeseriesTools.TimeSeries(times(y).+1/1250, fill("blank", length(y)))
+        x = TimeseriesTools.interlace(x, xx)
+        y = TimeseriesTools.interlace(y, yy)
+    end
+    TimeseriesTools.interlace(x, y)
+end
+
+
+
+
 
 
 end

@@ -1,3 +1,7 @@
+function getchangetrials end
+function getchangetrialtimeseries end
+export getchangetrials, getchangetrialtimeseries
+
 module VisualBehavior
 # using ..AllenNeuropixelsBase
 import ..AllenNeuropixelsBase as ANB
@@ -92,7 +96,7 @@ end
 function Session(session_id::Int; kwargs...)
     ANB.getsessiondata(session_id; kwargs...) |> Session
 end
-Session(; params...) = Session(params[:sessionid]);
+Session(; params...) = Session(params[:sessionid])
 
 
 getprobes() = manifest["project_metadata"]["probes.csv"] |> url2df
@@ -162,7 +166,7 @@ getsessionfile(session_id::Int, args...) = getsessionfiles(args...)["$session_id
 
 function getsessiontable()
     st = manifest["project_metadata"]["ecephys_sessions.csv"] |> url2df
-    st.structure_acronyms = [replace.(split(a, ','), r"[\[\]\'\s]"=>"") for a in st.structure_acronyms]
+    st.structure_acronyms = [replace.(split(a, ','), r"[\[\]\'\s]" => "") for a in st.structure_acronyms]
     st.ecephys_structure_acronyms = st.structure_acronyms
     return st
 end
@@ -202,13 +206,13 @@ getprobefile(session::AbstractNWBSession, probeid::Int) = getprobefile(session, 
 
 function ANB.getepochs(S::Session)
     df = S.pyObject.stimulus_presentations |> py2df
-    df.interval = [a..b for (a, b) in zip(df.start_time, df.end_time)]
+    df.interval = [a .. b for (a, b) in zip(df.start_time, df.end_time)]
     df = groupby(df, :stimulus_block)
-    _intersect(x) = minimum(minimum.(x))..maximum(maximum.(x))
+    _intersect(x) = minimum(minimum.(x)) .. maximum(maximum.(x))
     df = DataFrames.combine(df, :interval => _intersect => :interval,
-                            :active => unique => :active,
-                            :stimulus_block => unique => :stimulus_block,
-                            :stimulus_name => unique => :stimulus_name)
+        :active => unique => :active,
+        :stimulus_block => unique => :stimulus_block,
+        :stimulus_name => unique => :stimulus_name)
     df.start_time = minimum.(df.interval)
     df.end_time = maximum.(df.interval)
     df.duration = df.end_time - df.start_time
@@ -251,17 +255,17 @@ end
 function ANB.getprobeobj(S::Session, probeid)
     probes = S.pyObject.get_probes_obj()
     probeids = [pyconvert(Int, probe.id) for probe in probes.probes]
-    thisprobe = findfirst(probeids .== probeid)-1
+    thisprobe = findfirst(probeids .== probeid) - 1
     probe = probes.probes[thisprobe]
 end
 
 
 
 ## Behavior metrics
-import AllenNeuropixelsBase: gettrials, getlicks, getrewards, geteyetracking, getrunningspeed, getbehavior
+import AllenNeuropixelsBase: gettrials, getlicks, getrewards, geteyetracking, getrunningspeed, getbehavior, getchangetrials, getchangetrialtimeseries
 function gettrials(S::Session)
     df = S.pyObject.trials |> py2df
-    df.interval = [a..b for (a, b) in zip(df.start_time, df.stop_time)]
+    df.interval = [a .. b for (a, b) in zip(df.start_time, df.stop_time)]
     return df
 end
 getlicks(S::Session) = S.pyObject.licks |> py2df
@@ -274,21 +278,84 @@ function _getbehavior(S::Session)
     dfs = [f(S) for f in fs]
 end
 
-function getstimulitrace(session; blanks=true)
+function stimulustimeseries(session; blanks=true)
     df = ANB.getstimuli(session)
     x = TimeseriesTools.TimeSeries(df.start_time, df.image_name)
     y = TimeseriesTools.TimeSeries(df.end_time, df.image_name)
     if blanks
-        xx = TimeseriesTools.TimeSeries(times(x).-1/1250, fill("blank", length(x)))
-        yy = TimeseriesTools.TimeSeries(times(y).+1/1250, fill("blank", length(y)))
+        xx = TimeseriesTools.TimeSeries(times(x) .- 1 / 1250, fill("blank", length(x)))
+        yy = TimeseriesTools.TimeSeries(times(y) .+ 1 / 1250, fill("blank", length(y)))
         x = TimeseriesTools.interlace(x, xx)
         y = TimeseriesTools.interlace(y, yy)
     end
     TimeseriesTools.interlace(x, y)
 end
 
+function getchangetrials(session)
+    df = gettrials(session)
+    df = df[df.is_change, :]
 
+    # Get corrected change time by matching stimulus frame with start time in stimulus table
+    stimuli = ANB.getstimuli(session)
+    stimuli.change_frame = stimuli.start_frame
+    stimuli = innerjoin(df, stimuli, on=:change_frame, makeunique=true)
+    df.change_time_with_display_delay = stimuli.start_time_1
 
+    # Get response (lick) latency
+    df.lick_latency = df.response_time - df.change_time_with_display_delay # ? Do we want to use the precise lick times from the licks dataframe?
+
+    return df
+end
+
+# function gettrialtimeseries
+
+function getchangetrialtimeseries(session)
+    # Make an irregular time series of when the change trials occur
+    trials = getchangetrials(session)
+
+    t = trials.change_time_with_display_delay
+    vars = [:go, :catch, :hit, :miss, :aborted, :false_alarm, :correct_reject, :lick_latency, :auto_rewarded, :initial_image_name, :change_image_name]
+    X = hcat([trials[:, s] for s in vars]...)
+    return TimeSeries(t, vars, X)
+end
+
+flashesset = (Val{:Natural_Images_Lum_Matched_set_ophys_G_2019}, Val{:Natural_Images_Lum_Matched_set_ophys_H_2019})
+function ANB.alignlfp(session, X, stimulus::Union{flashesset...}; trail=:offset, trials=nothing, conditions=nothing, nonconditions=nothing)
+    stimulus = string(typeof(stimulus).parameters[1])
+    flash = 0.250 # s see visual behavior white paper
+    iti = 0.500 # s
+    is = ANB.stimulusintervals(session, stimulus)
+    if !isnothing(trials)
+        is = is[is.trials_id.∈(trials.trials_id,), :]
+    end
+    if !isnothing(conditions)
+        for c in conditions
+            is = is[is[:, c].==true, :]
+        end
+    end
+    if !isnothing(nonconditions)
+        for c in nonconditions
+            is = is[is[:, c].==false, :]
+        end
+    end
+    if trail == :onset
+        onsets = is.start_time
+        is = [onsets[i] .. min(onsets[i+1], onsets[i] + flash + iti) for i in 1:length(onsets)-1]
+    elseif trail == :offset
+        offsets = is.stop_time
+        onsets = is.start_time[2:end]
+        is = [offsets[i] .. min(offsets[i+1], offsets[i] + iti) for i in 1:length(offsets)-1]
+    else
+        is = is.interval
+    end
+    X = ANB.rectifytime(X)
+    _X = [X[Ti(g)] for g in is]
+    _X = _X[.!isempty.(_X)]
+    _X = [x for x in _X if size(x, Ti) > 100] # Remove short trials
+    _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X] # Catch any that are one sample too long
+    @assert all(all(size.(x, 1) .== size(x[1], 1)) for x in _X)
+    return _X
+end
 
 
 

@@ -37,7 +37,7 @@ end
 export getprobes
 
 function getchannels()
-    py2df(ecephyscache().get_channels());
+    py2df(ecephyscache().get_channels())
 end
 export getchannels
 
@@ -45,14 +45,14 @@ listprobes(session) = getchannels.((session,), getprobeids(session))
 export listprobes
 
 
-function getsessiondata(session_id::Int; filter_by_validity=true, amplitude_cutoff_maximum = 0.1, presence_ratio_minimum = 0.9, isi_violations_maximum = 0.5)
+function getsessiondata(session_id::Int; filter_by_validity=true, amplitude_cutoff_maximum=0.1, presence_ratio_minimum=0.9, isi_violations_maximum=0.5)
     if session_id > 1000000000
         behaviorcache().get_ecephys_session(session_id)
     else
         ecephyscache().get_session_data(session_id; filter_by_validity=filter_by_validity,
-                            amplitude_cutoff_maximum=amplitude_cutoff_maximum,
-                            presence_ratio_minimum=presence_ratio_minimum,
-                            isi_violations_maximum=isi_violations_maximum)
+            amplitude_cutoff_maximum=amplitude_cutoff_maximum,
+            presence_ratio_minimum=presence_ratio_minimum,
+            isi_violations_maximum=isi_violations_maximum)
     end
 end
 export getsessiondata
@@ -74,7 +74,7 @@ end
 Session(; params...) = Session(params[:sessionid]);
 getid(S::AbstractSession) = pyconvert(Int, S.pyObject.ecephys_session_id)
 getprobes(S::AbstractSession) = py2df(S.pyObject.probes)
-getfile(S::AbstractSession) = datadir*"Ecephys/session_"*string(getid(S))*"/session_"*string(getid(S))*".nwb"
+getfile(S::AbstractSession) = datadir * "Ecephys/session_" * string(getid(S)) * "/session_" * string(getid(S)) * ".nwb"
 getprobeids(S::AbstractSession) = getprobes(S)[!, :id]
 function getchannels(df::DataFrame)
     if hasproperty(df, :ecephys_structure_acronym)
@@ -85,7 +85,7 @@ function getchannels(df::DataFrame)
     return df
 end
 function getchannels(df::DataFrame, probeid::Number)
-    subset(df, :probe_id=>ByRow(==(probeid)))
+    subset(df, :probe_id => ByRow(==(probeid)))
 end
 function getchannels(S::AbstractSession)
     df = py2df(S.pyObject.channels)
@@ -96,18 +96,18 @@ function getchannels(S::AbstractSession, probeid)
     getchannels(df, probeid)
 end
 function getprobecoordinates(S::AbstractSession)
-    c = subset(getchannels(S),              :anterior_posterior_ccf_coordinate => ByRow(!ismissing),
-                                            :dorsal_ventral_ccf_coordinate => ByRow(!ismissing),
-                                            :left_right_ccf_coordinate => ByRow(!ismissing))
+    c = subset(getchannels(S), :anterior_posterior_ccf_coordinate => ByRow(!ismissing),
+        :dorsal_ventral_ccf_coordinate => ByRow(!ismissing),
+        :left_right_ccf_coordinate => ByRow(!ismissing))
     x = c[!, :anterior_posterior_ccf_coordinate]
     y = c[!, :dorsal_ventral_ccf_coordinate]
     z = c[!, :left_right_ccf_coordinate]
     return (x, y, z)
 end
 function getprobecoordinates(S::AbstractSession, probeid)
-    c = subset(getchannels(S, probeid),              :anterior_posterior_ccf_coordinate => ByRow(!ismissing),
-                                            :dorsal_ventral_ccf_coordinate => ByRow(!ismissing),
-                                            :left_right_ccf_coordinate => ByRow(!ismissing))
+    c = subset(getchannels(S, probeid), :anterior_posterior_ccf_coordinate => ByRow(!ismissing),
+        :dorsal_ventral_ccf_coordinate => ByRow(!ismissing),
+        :left_right_ccf_coordinate => ByRow(!ismissing))
     x = c[!, :anterior_posterior_ccf_coordinate]
     y = c[!, :dorsal_ventral_ccf_coordinate]
     z = c[!, :left_right_ccf_coordinate]
@@ -148,8 +148,8 @@ end
 
 function getprobestructures(S::AbstractSession, structures::AbstractVector)
     D = getprobestructures(S)
-    filter!(d->any(structures .∈ (last(d),)), D)
-    D = Dict(k=>first(v[v.∈[structures]]) for (k, v) in D)
+    filter!(d -> any(structures .∈ (last(d),)), D)
+    D = Dict(k => first(v[v.∈[structures]]) for (k, v) in D)
 end
 
 function getprobe(S::AbstractSession, structure::AbstractString)
@@ -161,11 +161,11 @@ function getprobes(S, structures::Vector)
     getprobe.((S,), structures)
 end
 
-function getunits(; filter_by_validity=true, amplitude_cutoff_maximum = 0.1, presence_ratio_minimum = 0.9, isi_violations_maximum = 0.5)
+function getunits(; filter_by_validity=true, amplitude_cutoff_maximum=0.1, presence_ratio_minimum=0.9, isi_violations_maximum=0.5)
     str = ecephyscache().get_units(filter_by_validity=filter_by_validity,
-                            amplitude_cutoff_maximum=amplitude_cutoff_maximum,
-                            presence_ratio_minimum=presence_ratio_minimum,
-                            isi_violations_maximum=isi_violations_maximum)
+        amplitude_cutoff_maximum=amplitude_cutoff_maximum,
+        presence_ratio_minimum=presence_ratio_minimum,
+        isi_violations_maximum=isi_violations_maximum)
     py2df(str)
 end
 export getunits
@@ -189,12 +189,12 @@ getunits(session::AbstractSession, structure::String) = subset(getunits(session)
 
 
 
-function getunitanalysismetricsbysessiontype(session_type; filter_by_validity=true, amplitude_cutoff_maximum = 0.1, presence_ratio_minimum = 0.9, isi_violations_maximum = 0.5) # Yeah thats python
+function getunitanalysismetricsbysessiontype(session_type; filter_by_validity=true, amplitude_cutoff_maximum=0.1, presence_ratio_minimum=0.9, isi_violations_maximum=0.5) # Yeah thats python
     str = ecephyscache().get_unit_analysis_metrics_by_session_type(session_type,
-                            filter_by_validity=filter_by_validity,
-                            amplitude_cutoff_maximum=amplitude_cutoff_maximum,
-                            presence_ratio_minimum=presence_ratio_minimum,
-                            isi_violations_maximum=isi_violations_maximum)
+        filter_by_validity=filter_by_validity,
+        amplitude_cutoff_maximum=amplitude_cutoff_maximum,
+        presence_ratio_minimum=presence_ratio_minimum,
+        isi_violations_maximum=isi_violations_maximum)
     py2df(str)
 end
 export getunitanalysismetricsbysessiontype
@@ -203,14 +203,14 @@ export getunitanalysismetricsbysessiontype
 
 function getallunitmetrics() # This one is really slow
     metrics1 = get_unit_analysis_metrics_by_session_type("brain_observatory_1.1",
-                            amplitude_cutoff_maximum = Inf,
-                            presence_ratio_minimum = -Inf,
-                            isi_violations_maximum = Inf)
+        amplitude_cutoff_maximum=Inf,
+        presence_ratio_minimum=-Inf,
+        isi_violations_maximum=Inf)
 
     metrics2 = get_unit_analysis_metrics_by_session_type("functional_connectivity",
-                            amplitude_cutoff_maximum = Inf,
-                            presence_ratio_minimum = -Inf,
-                            isi_violations_maximum = Inf)
+        amplitude_cutoff_maximum=Inf,
+        presence_ratio_minimum=-Inf,
+        isi_violations_maximum=Inf)
 
     vcat(analysis_metrics1, analysis_metrics2)
 end
@@ -236,8 +236,12 @@ function onlyvalid(s::AbstractSession, sp::Dict)
 end
 
 function getstimuli(S::AbstractSession)
-    str =  S.pyObject.stimulus_presentations
-    py2df(str)
+    str = S.pyObject.stimulus_presentations
+    str = py2df(str)
+    if !hasproperty(str, :stop_time)
+        str.stop_time = str.end_time
+    end
+    return str
 end
 getstimulus = getstimuli
 
@@ -257,18 +261,18 @@ end
 getstimulusname(session::AbstractSession, times; stimulus_table=getstimuli(session), kwargs...) = getstimulusname.([session], times; stimulus_table, kwargs...)
 
 
-function getstimuli(S::Session, stimulusname::String)
+function getstimuli(S::AbstractSession, stimulusname::String)
     stimulus_table = getstimuli(S)
-    df = subset(stimulus_table, :stimulus_name=>ByRow(==(stimulusname)))
+    df = subset(stimulus_table, :stimulus_name => ByRow(==(stimulusname)))
 end
 
-function getstimuli(session::Session, times::Union{Tuple, UnitRange, LinRange, Vector})
+function getstimuli(session::AbstractSession, times::Union{Tuple,UnitRange,LinRange,Vector})
     stimuli = getstimuli(session)
     idxs = [findfirst(time .< stimuli.stop_time) for time ∈ times] # Find first frame that ends after each time point
     return stimuli[idxs, :]
 end
 
-function getstimuli(session::Session, times::Interval)
+function getstimuli(session::AbstractSession, times::Interval)
     stimuli = getstimuli(session)
     start = stimuli.start_time
     stop = stimuli.stop_time
@@ -284,11 +288,11 @@ end
 
 function getepochs(S::AbstractSession, stimulusname::Regex)
     epoch_table = getepochs(S)
-    df = subset(epoch_table, :stimulus_name=>ByRow(x->!isnothing(match(stimulusname, x))))
+    df = subset(epoch_table, :stimulus_name => ByRow(x -> !isnothing(match(stimulusname, x))))
 end
 function getepochs(S::AbstractSession, stimulusname)
     epoch_table = getepochs(S)
-    df = subset(epoch_table, :stimulus_name=>ByRow(==(stimulusname)))
+    df = subset(epoch_table, :stimulus_name => ByRow(==(stimulusname)))
 end
 
 getepochs(S::Int, args...; kwargs...) = getepochs(Session(S), args...; kwargs...)
@@ -296,7 +300,7 @@ getepochs(S::Int, args...; kwargs...) = getepochs(Session(S), args...; kwargs...
 function getstimulustimes(S::Session, stimulusname)
     E = getepochs(S, stimulusname)
     ts = [E.start_time E.stop_time]
-    times = [x..y for (x, y) in eachrow(ts)]
+    times = [x .. y for (x, y) in eachrow(ts)]
 end
 
 function getstimulustimes(; params...)
@@ -305,7 +309,7 @@ function getstimulustimes(; params...)
 end
 
 function getlfppath(session::AbstractSession, probeid)
-    path = joinpath(datadir, "Ecephys", "session_"*string(getid(session)), "probe_"*string(probeid)*"_lfp.nwb");
+    path = joinpath(datadir, "Ecephys", "session_" * string(getid(session)), "probe_" * string(probeid) * "_lfp.nwb")
 end
 
 

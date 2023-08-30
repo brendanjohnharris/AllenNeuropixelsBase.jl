@@ -48,13 +48,19 @@ function py2df(p)
     df = p |> PyPandasDataFrame
     df = df |> DataFrame
     # if hasfield(p, :index)
-        index = p.index
-        index = pyconvert(Vector{Int64}, index)
-        if string(p.index.name) == "None"
-            df[!, "Index"] = index
-        else
-            df[!, string(p.index.name)] = index
+    index = p.index
+    index = pyconvert(Vector{Int64}, index)
+    if string(p.index.name) == "None"
+        df[!, "Index"] = index
+    else
+        df[!, string(p.index.name)] = index
+    end
+    # Manual conversions
+    for s in names(df)
+        if eltype(df[:, s]) <: Union{Missing,AbstractArray{Bool,0}} # && all(length.(df[:, s]) .< 2)
+            df[!, s] = [ismissing(i) ? missing : pyconvert(Bool, i[1]) for i in df[:, s]]
         end
+    end
     # end
     return df[!, [end, (1:size(df, 2)-1)...]]
 end
@@ -64,7 +70,7 @@ getprobes(S::AbstractNWBSession) = py2df(S.pyObject.probes)
 getchannels(S::AbstractNWBSession) = py2df(S.pyObject.get_channels())
 
 Base.Dict(p::Py) = pyconvert(Dict, p)
-function Base.Dict(d::Dict{T, <:PythonCall.PyArray}) where {T}
+function Base.Dict(d::Dict{T,<:PythonCall.PyArray}) where {T}
     return Dict(k => pyconvert(Array{eltype(v)}, v) for (k, v) in d)
 end
 
@@ -92,7 +98,7 @@ end
 function getlfptimes(session::AbstractNWBSession, probeid::Int, idxs)
     d = diff(idxs)
     if all(d[1] .== d)
-        idxs = @py slice(idxs[0]-1, idxs[-1]-1, d[1])
+        idxs = @py slice(idxs[0] - 1, idxs[-1] - 1, d[1])
     end
     f = getprobefile(session, probeid) |> NWBStream.s3open |> first
     _lfp = Dict(f.acquisition)["probe_1108501239_lfp_data"]
@@ -105,13 +111,13 @@ function getlfptimes(session::AbstractNWBSession, probeid::Int, i::Interval)
     timedata = _lfp.timestamps
     # infer the timestep
     dt = mean(diff(pyconvert(Vector, timedata[0:1000])))
-    putativerange = pyconvert(Float64, timedata[0]):dt:pyconvert(Float64, timedata[-1]+dt)
+    putativerange = pyconvert(Float64, timedata[0]):dt:pyconvert(Float64, timedata[-1] + dt)
     idxs = findall(putativerange .∈ (i,))
-    idxs = vcat(idxs[1].-(100:-1:1), idxs, idxs[end].+(1:100))
-    idxs = idxs[idxs .> 0]
-    idxs = idxs[idxs .< pyconvert(Int, timedata.len())]
+    idxs = vcat(idxs[1] .- (100:-1:1), idxs, idxs[end] .+ (1:100))
+    idxs = idxs[idxs.>0]
+    idxs = idxs[idxs.<pyconvert(Int, timedata.len())]
     ts = getlfptimes(session::AbstractNWBSession, probeid::Int, idxs)
-    ts = ts[ts .∈ (i,)]
+    ts = ts[ts.∈(i,)]
 end
 
 function getepochs(S::AbstractNWBSession)
@@ -139,12 +145,12 @@ function _getlfp(session::AbstractNWBSession, probeid::Int; channelidxs=1:length
         #     slc = @py slice(first(_timeidxs), last(_timeidxs), d[1])
         #     @time @py _lfp.data[slc]
         # else
-            lfp[:, i] .= pyconvert(Vector{Float32}, _lfp.data[_timeidxs, _channelidx])
+        lfp[:, i] .= pyconvert(Vector{Float32}, _lfp.data[_timeidxs, _channelidx])
         # end
     end
     if channelids isa Number
         channelids = [channelids]
     end
-    X = DimArray(lfp, (Ti(timedata),  Dim{:channel}(channelids)))
+    X = DimArray(lfp, (Ti(timedata), Dim{:channel}(channelids)))
     return X
 end

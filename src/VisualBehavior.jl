@@ -1,6 +1,6 @@
 function getchangetrials end
 function getchangetrialtimeseries end
-export getchangetrials, getchangetrialtimeseries
+export getchangetrials, getchangetrialtimeseries, stimulustimeseries
 
 module VisualBehavior
 # using ..AllenNeuropixelsBase
@@ -306,7 +306,6 @@ function getchangetrials(session)
 
     return df
 end
-
 # function gettrialtimeseries
 
 function getchangetrialtimeseries(session)

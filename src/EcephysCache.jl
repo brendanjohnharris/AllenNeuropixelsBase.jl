@@ -1,6 +1,6 @@
 using IntervalSets
 
-export ecephyscache, behaviorcache, getsessiontable, getprobes, getchannels, listprobes, getsessiondata, AbstractSession, Session, getid, getprobes, getfile, getprobeids, getchannels, getprobecoordinates, getstructureacronyms, getstructureids, getprobestructures, getprobe, getunits, getepochs, getstimuli, getstimulustimes, getunitmetrics, getunitanalysismetrics, getunitanalysismetricsbysessiontype, isvalidunit, onlyvalid
+export ecephyscache, behaviorcache, getsessiontable, getprobes, getchannels, listprobes, getsessiondata, AbstractSession, Session, getid, getprobes, getfile, getprobeids, getchannels, getprobecoordinates, getstructureacronyms, getstructureids, getprobestructures, getprobe, getunits, getepochs, getstimuli, getstimulustimes, getunitmetrics, getunitanalysismetrics, getunitanalysismetricsbysessiontype, isvalidunit, onlyvalid, getchannelcoordinates
 
 function ecephyscache()
     ecephys_project_cache.EcephysProjectCache.from_warehouse(manifest=ecephysmanifest)
@@ -95,31 +95,50 @@ function getchannels(S::AbstractSession, probeid)
     df = getchannels(S)
     getchannels(df, probeid)
 end
-function getprobecoordinates(S::AbstractSession)
-    c = subset(getchannels(S), :anterior_posterior_ccf_coordinate => ByRow(!ismissing),
+# function getprobecoordinates(S::AbstractSession)
+#     c = subset(getchannels(S), :anterior_posterior_ccf_coordinate => ByRow(!ismissing),
+#         :dorsal_ventral_ccf_coordinate => ByRow(!ismissing),
+#         :left_right_ccf_coordinate => ByRow(!ismissing))
+#     x = c[!, :anterior_posterior_ccf_coordinate]
+#     y = c[!, :dorsal_ventral_ccf_coordinate]
+#     z = c[!, :left_right_ccf_coordinate]
+#     return (x, y, z)
+# end
+function getprobecoordinates(args...)#; only_has_lfp=false)
+    # if only_has_lfp
+    #     _c = getchannels()
+    #     _c = _c[_c.has_lfp_data.==true, :]
+    #     _c = _c.id
+    #     c = subset(getchannels(args...), :anterior_posterior_ccf_coordinate => ByRow(!ismissing),
+    #         :dorsal_ventral_ccf_coordinate => ByRow(!ismissing),
+    #         :left_right_ccf_coordinate => ByRow(!ismissing),
+    #         :id => ByRow(x -> x ∈ _c))
+    # else
+    c = subset(getchannels(args...), :anterior_posterior_ccf_coordinate => ByRow(!ismissing),
         :dorsal_ventral_ccf_coordinate => ByRow(!ismissing),
         :left_right_ccf_coordinate => ByRow(!ismissing))
+    # end
     x = c[!, :anterior_posterior_ccf_coordinate]
     y = c[!, :dorsal_ventral_ccf_coordinate]
     z = c[!, :left_right_ccf_coordinate]
     return (x, y, z)
 end
-function getprobecoordinates(S::AbstractSession, probeid)
-    c = subset(getchannels(S, probeid), :anterior_posterior_ccf_coordinate => ByRow(!ismissing),
+function getchannelcoordinates(args...)
+    c = subset(getchannels(args...), :anterior_posterior_ccf_coordinate => ByRow(!ismissing),
         :dorsal_ventral_ccf_coordinate => ByRow(!ismissing),
         :left_right_ccf_coordinate => ByRow(!ismissing))
     x = c[!, :anterior_posterior_ccf_coordinate]
     y = c[!, :dorsal_ventral_ccf_coordinate]
     z = c[!, :left_right_ccf_coordinate]
-    return (x, y, z)
+    return Dict(c.id .=> zip(x, y, z))
 end
 
 notemptyfirst(x) = length(x) > 0 ? x[1] : missing
 
 function getstructureacronyms(channelids::Vector{Int})
     channels = getchannels()
-    acronyms = Vector{Any}(undef, size(channelids))
-    [acronyms[i] = notemptyfirst(channels[channels.id.==channelids[i], :structure_acronym]) for i ∈ 1:length(channelids)]
+    # acronyms = Vector{Any}(undef, size(channelids))
+    acronyms = [notemptyfirst(channels[channels.id.==channelids[i], :ecephys_structure_acronym]) for i ∈ 1:length(channelids)]
     return acronyms
 end
 

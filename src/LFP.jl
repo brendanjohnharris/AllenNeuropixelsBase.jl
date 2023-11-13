@@ -2,7 +2,7 @@ using IntervalSets
 using HDF5
 using Statistics
 
-export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod, getlfp, getlfptimes, getlfpchannels, samplingrate, WaveletMatrix, LogWaveletMatrix, formatlfp, getchannels, getchanneldepths, waveletmatrix, getunitdepths, getdim, gettimes, sortbydepth, rectifytime, stimulusepochs, stimulusintervals, gaborintervals, alignlfp, logwaveletmatrix, matchlfp, joinlfp, catlfp, channels2depths, selectepochs
+export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod, getlfp, getlfptimes, getlfpchannels, samplingrate, WaveletMatrix, LogWaveletMatrix, formatlfp, getchannels, getchanneldepths, waveletmatrix, getunitdepths, getdim, gettimes, sortbydepth, rectifytime, stimulusepochs, stimulusintervals, gaborintervals, alignlfp, logwaveletmatrix, matchlfp, joinlfp, catlfp, channels2depths, selectepochs, getchannellayers, getstreamlines
 
 LFPVector = AbstractDimArray{T,1,Tuple{A},B} where {T,A<:DimensionalData.TimeDim,B}
 LFPMatrix = AbstractDimArray{T,2,Tuple{A,B}} where {T,A<:DimensionalData.TimeDim,B<:Dim{:channel}}
@@ -298,11 +298,11 @@ function formatlfp(session::AbstractSession; probeid=nothing, tol=6, stimulus="g
         structure = structure[structure.!=["root"]]
     end
     if stimulus == "all"
-        X = rectifytime(getlfp(session, probeid, structure; inbrain=200); tol)
+        X = rectifytime(getlfp(session, probeid, structure; inbrain=0); tol)
     else
         epoch = selectepochs(session, stimulus, epoch)
         times = epoch.start_time .. epoch.stop_time
-        X = rectifytime(getlfp(session, probeid, structure; inbrain=200, times); tol)
+        X = rectifytime(getlfp(session, probeid, structure; inbrain=0, times); tol)
     end
     X = sortbydepth(session, probeid, X)
     X = DimArray(X; metadata=Dict(:sessionid => getid(session), :probeid => probeid, :stimulus => stimulus, :structure => structure))
@@ -321,6 +321,70 @@ export formatlfp
 
 
 
+function getstreamlines()
+    streamlinepath = abspath(referencespacemanifest, "../laplacian_10.nrrd")
+    if !isfile(streamlinepath)
+        # Download it
+        @info "Downloading streamline data, this may take a few minutes"
+        download("https://www.dropbox.com/sh/7me5sdmyt5wcxwu/AACFY9PQ6c79AiTsP8naYZUoa/laplacian_10.nrrd?dl=1", streamlinepath)
+
+    end
+    streamlines = load(streamlinepath)
+    streamlines = DimArray(streamlines.data,
+        (
+            Dim{:L}(getproperty(streamlines.axes[1], :val)),
+            Dim{:P}(getproperty(streamlines.axes[2], :val)),
+            Dim{:S}(getproperty(streamlines.axes[3], :val)),
+        ))
+    return streamlines
+end
+
+
+
+function getchannellayers(session, channels, cdf=getchannels(session))
+    function get_layer_name(acronym)
+        try
+            if !contains(acronym, "VIS")
+                return 0
+            end
+            layer = parse(Int, match(r"\d+", acronym).match)
+            if layer == 3
+                layer = 0
+            end
+            return layer
+        catch
+            return 0
+        end
+    end
+
+    function get_structure_ids(df, annotations)
+        x = floor.(Int, df.anterior_posterior_ccf_coordinate / 10)
+        y = floor.(Int, df.dorsal_ventral_ccf_coordinate / 10)
+        z = floor.(Int, df.left_right_ccf_coordinate / 10)
+
+        x[x.<0] .= 0
+        y[y.<0] .= 0
+        z[z.<0] .= 0
+
+        structure_ids = [annotations[_x.+1, _y.+1, _z.+1] for (_x, _y, _z) in zip(x, y, z)] # annotation volume is 1-indexed
+
+        return structure_ids .|> Int |> vec
+    end
+
+    df = cdf[indexin(channels, cdf.id), :]
+    annotations, _ = getannotationvolume(; resolution=10)
+    df = df[df.anterior_posterior_ccf_coordinate.>0, :]
+    x = floor.(Int, df.anterior_posterior_ccf_coordinate / 10)
+    y = floor.(Int, df.dorsal_ventral_ccf_coordinate / 10)
+    z = floor.(Int, df.left_right_ccf_coordinate / 10)
+
+    structure_ids = get_structure_ids(df, annotations)
+    structure_tree = Dict(v => k for (k, v) in getstructureidmap())
+    structure_acronyms = [s == 0 ? "root" : getindex(structure_tree, s) for s in structure_ids]
+    layers = [get_layer_name(acronym) for acronym in structure_acronyms]
+    return layers, structure_acronyms
+end
+
 
 function getchannels(data::AbstractDimArray)
     dims(data, :channel).val
@@ -329,65 +393,101 @@ end
 """
 At the moment this is just a proxy: distance along the probe to the cortical surface
 """
-function getchanneldepths(session, probeid, channels)
+function getchanneldepths(session, probeid, channels; kwargs...)
     cdf = getchannels(session, probeid)
-    return _getchanneldepths(cdf, channels)
+    return _getchanneldepths(cdf, channels; kwargs...)
 end
-# function getchanneldepths(session, channels)
-#     cdf = getchannels(session) # Slightly slower than the above
-#     #cdf = cdf[indexin(channels, cdf.id), :]
-#     cdfs = groupby(cdf, :probe_id)
-#     depths = vcat([_getchanneldepths(c, c.id) for c ∈ cdfs]...)
-#     depths = depths[indexin(channels, vcat(cdfs...).id)]
-# end
-function _getchanneldepths(cdf, channels)
+function getchanneldepths(session, channels::Union{AbstractVector,Tuple}; kwargs...)
+    cdf = getchannels(session) # Slightly slower than the above
+    cdf = cdf[indexin(channels, cdf.id), :]
+    cdfs = groupby(cdf, :probe_id)
+    depths = vcat([_getchanneldepths(c, c.id; kwargs...) for c ∈ cdfs]...)
+    depths = depths[indexin(channels, vcat(cdfs...).id)]
+end
+function _getchanneldepths(cdf, channels; method=:streamlines)
     # surfaceposition = minimum(subset(cdf, :structure_acronym=>ByRow(ismissing)).probe_vertical_position) # Minimum because tip is at 0
 
-    if any(ismissing.(cdf.structure_acronym))
-        surfaceposition = maximum(subset(cdf, :structure_acronym => ByRow(ismissing)).dorsal_ventral_ccf_coordinate)
-    elseif any(skipmissing(cdf.structure_acronym) .== ["root"]) # For VBN files, "root" rather than "missing"
-        surfaceposition = maximum(subset(cdf, :structure_acronym => ByRow(==("root"))).dorsal_ventral_ccf_coordinate)
+    if method === :dorsal_ventral
+        if any(ismissing.(cdf.structure_acronym))
+            surfaceposition = maximum(subset(cdf, :structure_acronym => ByRow(ismissing)).dorsal_ventral_ccf_coordinate)
+        elseif any(skipmissing(cdf.structure_acronym) .== ["root"]) # For VBN files, "root" rather than "missing"
+            surfaceposition = maximum(subset(cdf, :structure_acronym => ByRow(==("root"))).dorsal_ventral_ccf_coordinate)
+        end
+        # Assume the first `missing` channel corresponds to the surfaceprobe_vertical_position
+        idxs = indexin(channels, cdf.id)[:]
+        # alldepths = surfaceposition .- cdf.probe_vertical_position # in μm
+        alldepths = cdf.dorsal_ventral_ccf_coordinate .- surfaceposition # in μm
+        depths = fill(NaN, size(idxs))
+        depths[.!isnothing.(idxs)] = alldepths[idxs[.!isnothing.(idxs)]]
+    elseif method === :streamlines # This one only really works for the cortex. Anythign outside the cortex is a guess based on linear extrapolation.
+        # Also note that this gives what seems to be a proportion in the cortex
+        # https://www.dropbox.com/sh/7me5sdmyt5wcxwu/AACB2idSLV-F_QOG894NnZS2a?dl=0&preview=layer_mapping_example.py # The code used in the siegle 2021 paper
+
+        streamlines = getstreamlines()
+
+        df = cdf[cdf.anterior_posterior_ccf_coordinate.>0, :]
+        df = df[indexin(channels, df.id), :]
+        x = df.anterior_posterior_ccf_coordinate
+        y = df.dorsal_ventral_ccf_coordinate
+        z = df.left_right_ccf_coordinate
+
+
+        cortical_depth = [streamlines[Dim{:L}(Near(_x)), Dim{:P}(Near(_y)), Dim{:S}(Near(_z))] for (_x, _y, _z) ∈ zip(x, y, z)] # 1-based indexing
+
+        # Linearly extrapolate the zero depths
+        _xs = findall(cortical_depth .> 0)
+        _ys = cortical_depth[_xs]
+        depthf(x) = first([1 x] * ([ones(length(_xs)) _xs] \ _ys))
+        cortical_depth[cortical_depth.==0] .= depthf.(findall(cortical_depth .== 0))
+        # f = Figure()
+        # ax = Axis3(f[1, 1]; aspect=:data)
+        # volume!(ax, dims(streamlines, Dim{:L})[1:100:end] |> collect,
+        #     dims(streamlines, Dim{:P})[1:10:end] |> collect,
+        #     dims(streamlines, Dim{:S})[1:100:end] |> collect,
+        #     streamlines.data[1:100:end, 1:100:end, 1:100:end])
+        # meshscatter!(ax, x, y, z, markersize=100, color=AN.getchanneldepths(session, channels; method=:dorsal_ventral))
+        # current_figure()
+
+
+        df.cortical_depth .= 0.0
+        df[df.anterior_posterior_ccf_coordinate.>0, :cortical_depth] .= cortical_depth
+        depths = df.cortical_depth
+
     end
-    # Assume the first `missing` channel corresponds to the surfaceprobe_vertical_position
-    idxs = indexin(channels, cdf.id)[:]
-    # alldepths = surfaceposition .- cdf.probe_vertical_position # in μm
-    alldepths = cdf.dorsal_ventral_ccf_coordinate .- surfaceposition # in μm
-    depths = fill(NaN, size(idxs))
-    depths[.!isnothing.(idxs)] = alldepths[idxs[.!isnothing.(idxs)]]
     return depths
 end
-function getchanneldepths(session, probeid, X::LFPMatrix)
+function getchanneldepths(session, probeid, X::LFPMatrix; kwargs...)
     channels = dims(X, Dim{:channel}) |> collect
-    getchanneldepths(session, probeid, channels)
+    getchanneldepths(session, probeid, channels; kwargs...)
 end
-function getchanneldepths(X::LFPMatrix)
+function getchanneldepths(X::LFPMatrix; kwargs...)
     @assert all(haskey.((metadata(X),), (:sessionid, :probeid)))
     S = Session(metadata(X)[:sessionid])
-    getchanneldepths(S, metadata(X)[:probeid], X)
+    getchanneldepths(S, metadata(X)[:probeid], X; kwargs...)
 end
 
-function channels2depths(session, probeid::Integer, X::AbstractDimArray, d::Integer)
+function channels2depths(session, probeid::Integer, X::AbstractDimArray, d::Integer; kwargs...)
     Y = deepcopy(X)
     _d = d
     c = dims(Y, _d) |> collect
-    depths = getchanneldepths(session, probeid, c)
+    depths = getchanneldepths(session, probeid, c; kwargs...)
     Y = set(Y, dims(Y, _d) => Dim{:depth}(depths))
     Y = reorder(Y, dims(Y, _d) => DimensionalData.ForwardOrdered)
     return Y
 end
-function channels2depths(session, probeids::Vector, X::AbstractDimArray, d)
+function channels2depths(session, probeids::Vector, X::AbstractDimArray, d; kwargs...)
     Y = deepcopy(X)
     d = [d...]
     for (i, _d) in d
         probeid = probeids[i]
         c = dims(Y, _d) |> collect
-        depths = getchanneldepths(session, probeid, c)
+        depths = getchanneldepths(session, probeid, c; kwargs...)
         Y = set(Y, dims(Y, _d) => Dim{:depth}(depths))
     end
     return Y
 end
 
-function getunitdepths(session, probeid, units)
+function getunitdepths(session, probeid, units; kwargs...)
     metrics = getunitanalysismetrics(session)
     check = all(units .∈ (metrics.ecephys_unit_id,))
     if !check
@@ -395,7 +495,7 @@ function getunitdepths(session, probeid, units)
     end
     metrics = subset(metrics, :ecephys_unit_id, units)
     channels = metrics.ecephys_channel_id
-    getchanneldepths(session, probeid, channels)
+    getchanneldepths(session, probeid, channels; kwargs...)
 end
 
 getdim(X::AbstractDimArray, dim) = dims(X, dim).val

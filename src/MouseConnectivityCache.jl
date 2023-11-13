@@ -1,19 +1,19 @@
 export mouseconnectivitycache, getannotationvolume, getstructuremask, gettemplatevolume, getreferencespace
 
-function mouseconnectivitycache()
-    mcc = mouse_connectivity_cache.MouseConnectivityCache(manifest_file=mouseconnectivitymanifest)
+function mouseconnectivitycache(; kwargs...)
+    mcc = mouse_connectivity_cache.MouseConnectivityCache(; manifest_file=mouseconnectivitymanifest, kwargs...)
 end
 export MouseConnectivityCache
 
 
-function getannotationvolume()
-    vol, info = mouseconnectivitycache().get_annotation_volume()
+function getannotationvolume(; resolution=10, kwargs...)
+    vol, info = mouseconnectivitycache(; resolution, kwargs...).get_annotation_volume()
     return pyconvert(Array, vol), Dict(info)
 end
 
 function getstructuremask(structureid::Number)
     strucutreid = Int(structureid)
-    mask, info =  mouseconnectivitycache().get_structure_mask(structureid)
+    mask, info = mouseconnectivitycache().get_structure_mask(structureid)
     return pyconvert(Array, mask), Dict(info)
 end
 

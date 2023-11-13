@@ -29,7 +29,7 @@ end
 function getstructuretreedepth(id) # How many parents does this structure have (+1)?
     id = Int(id)
     tree = getstructuretree()
-    d = tree.get_structures_by_id([id])[1]
+    d = tree.get_structures_by_id([id])[0]
     length(d["structure_id_path"])
 end
 
@@ -37,20 +37,20 @@ end
 function getstructurename(id::Number)
     id = Int(id)
     tree = getstructuretree()
-    d = tree.get_structures_by_id([id])[1]
-    d["name"]
+    d = tree.get_structures_by_id([id])[0]
+    pyconvert(String, d["name"])
 end
 function getstructurename(acronym::String)
     tree = getstructuretree()
-    d = tree.get_structures_by_acronym([acronym])[1]
-    d["name"]
+    d = tree.get_structures_by_acronym([acronym])[0]
+    pyconvert(String, d["name"])
 end
 
 
 function getstructureid(acronym::String)
     tree = getstructuretree()
-    d = tree.get_structures_by_acronym([acronym])[1]
-    d["id"]
+    d = tree.get_structures_by_acronym([acronym])[0]
+    pyconvert(Int, d["id"])
 end
 
 

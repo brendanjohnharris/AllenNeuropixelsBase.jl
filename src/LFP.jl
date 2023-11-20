@@ -298,11 +298,11 @@ function formatlfp(session::AbstractSession; probeid=nothing, tol=6, stimulus="g
         structure = structure[structure.!=["root"]]
     end
     if stimulus == "all"
-        X = rectifytime(getlfp(session, probeid, structure; inbrain=0); tol)
+        X = rectifytime(getlfp(session, probeid, structure; inbrain=0.0); tol)
     else
         epoch = selectepochs(session, stimulus, epoch)
         times = epoch.start_time .. epoch.stop_time
-        X = rectifytime(getlfp(session, probeid, structure; inbrain=0, times); tol)
+        X = rectifytime(getlfp(session, probeid, structure; inbrain=0.0, times); tol)
     end
     X = sortbydepth(session, probeid, X)
     X = DimArray(X; metadata=Dict(:sessionid => getid(session), :probeid => probeid, :stimulus => stimulus, :structure => structure))

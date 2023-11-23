@@ -87,6 +87,9 @@ end
 function getchannels(df::DataFrame, probeid::Number)
     subset(df, :probe_id => ByRow(==(probeid)))
 end
+function getchannels(df::DataFrame, probeids)
+    subset(df, :probe_id => ByRow(∈(probeids)))
+end
 function getchannels(S::AbstractSession)
     df = py2df(S.pyObject.channels)
     return getchannels(df)
@@ -135,12 +138,12 @@ end
 
 notemptyfirst(x) = length(x) > 0 ? x[1] : missing
 
-function getstructureacronyms(channelids::Vector{Int})
-    channels = getchannels()
-    # acronyms = Vector{Any}(undef, size(channelids))
-    acronyms = [notemptyfirst(channels[channels.id.==channelids[i], :ecephys_structure_acronym]) for i ∈ 1:length(channelids)]
-    return acronyms
-end
+# function getstructureacronyms(channelids::Vector{Int})
+#     channels = getchannels()
+#     # acronyms = Vector{Any}(undef, size(channelids))
+#     acronyms = [notemptyfirst(channels[channels.id.==channelids[i], :ecephys_structure_acronym]) for i ∈ 1:length(channelids)]
+#     return acronyms
+# end
 
 function getstructureacronyms(S::AbstractSession, channelids::Vector{Int})
     channels = getchannels(S)

@@ -247,9 +247,15 @@ function getunitanalysismetrics()
     metrics = outerjoin(metrics, session_table; on=:ecephys_session_id)
 end
 
+ANB.getunitanalysismetrics(session::Session; kwargs...) = ANB.getunitmetrics(session; kwargs...)
+
+
 function ANB.getunitmetrics(session::Session)
     str = session.pyObject.get_units()
-    py2df(str)
+    df = py2df(str)
+    df.ecephys_unit_id = df.id
+    df.ecephys_channel_id = df.peak_channel_id
+    df
 end
 
 function ANB.getprobeobj(S::Session, probeid)
@@ -291,6 +297,7 @@ function stimulustimeseries(session; blanks=true)
     TimeseriesTools.interlace(x, y)
 end
 
+
 function getchangetrials(session)
     df = gettrials(session)
     df = df[df.is_change, :]
@@ -319,11 +326,16 @@ function getchangetrialtimeseries(session)
 end
 
 flashesset = (Val{:Natural_Images_Lum_Matched_set_ophys_G_2019}, Val{:Natural_Images_Lum_Matched_set_ophys_H_2019})
-function ANB.alignlfp(session, X, stimulus::Union{flashesset...}; trail=:offset, trials=nothing, conditions=nothing, nonconditions=nothing)
+function ANB.alignlfp(session, X, stimulus::Union{flashesset...}; trail=:change, trials=nothing, conditions=nothing, nonconditions=nothing, zero=false)
     stimulus = string(typeof(stimulus).parameters[1])
     flash = 0.250 # s see visual behavior white paper
     iti = 0.500 # s
     is = ANB.stimulusintervals(session, stimulus)
+    if trail === :change # In this case the X should only be from around change trials
+        is = getchangetrials(session)
+        # idxs = indexin(stimuli.trials_id, ANB.getstimuli(session, stimulus).trials_id)
+        # stimuli = stimuli[idxs, :]
+    end
     if !isnothing(trials)
         is = is[is.trials_id.∈(trials.trials_id,), :]
     end
@@ -337,13 +349,17 @@ function ANB.alignlfp(session, X, stimulus::Union{flashesset...}; trail=:offset,
             is = is[is[:, c].==false, :]
         end
     end
-    if trail == :onset
+    if trail == :onset # The programmed change time
         onsets = is.start_time
         is = [onsets[i] .. min(onsets[i+1], onsets[i] + flash + iti) for i in 1:length(onsets)-1]
-    elseif trail == :offset
+    elseif trail == :offset # The programmed off time
         offsets = is.stop_time
         onsets = is.start_time[2:end]
         is = [offsets[i] .. min(offsets[i+1], offsets[i] + iti) for i in 1:length(offsets)-1]
+    elseif trail == :change # The true change time, including display delay
+        onsets = is.change_time_with_display_delay
+        onsets = [onsets; Inf]
+        is = [onsets[i] .. min(onsets[i+1], onsets[i] + flash + iti) for i in 1:length(onsets)-1]
     else
         is = is.interval
     end
@@ -352,6 +368,7 @@ function ANB.alignlfp(session, X, stimulus::Union{flashesset...}; trail=:offset,
     _X = _X[.!isempty.(_X)]
     _X = [x for x in _X if size(x, Ti) > 100] # Remove short trials
     _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X] # Catch any that are one sample too long
+    _X = ANB.rectifytime.(_X; zero)
     @assert all(all(size.(x, 1) .== size(x[1], 1)) for x in _X)
     return _X
 end

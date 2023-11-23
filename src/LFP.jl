@@ -155,6 +155,7 @@ function _getlfp(session::AbstractSession, probeid::Int; channelidxs=1:length(ge
     end
     X = DimArray(lfp, (Ti(timedata), Dim{:channel}(channelids)); metadata=Dict(:sessionid => getid(session), :probeid => probeid))
     close(f)
+    X = sortbydepth(session, probeid, X)
     return X
 end
 
@@ -510,7 +511,7 @@ function sortbydepth(session, probeid, LFP::AbstractDimArray)
 end
 
 
-function rectifytime(X::AbstractDimArray; tol=6) # tol gives significant figures for rounding
+function rectifytime(X::AbstractDimArray; tol=6, zero=false) # tol gives significant figures for rounding
     ts = gettimes(X)
     stp = ts |> diff |> mean
     err = ts |> diff |> std
@@ -519,11 +520,20 @@ function rectifytime(X::AbstractDimArray; tol=6) # tol gives significant figures
     else
         stp = round(stp; digits=tol)
         t0, t1 = round.(extrema(ts); digits=tol)
+        if zero
+            origts = t0:stp:t1+(10000*stp)
+            t1 = t1 - t0
+            t0 = 0
+        end
         ts = t0:stp:t1+(10000*stp)
         ts = ts[1:size(X, Ti)] # Should be ok?
     end
     @assert length(ts) == size(X, Ti)
     X = set(X, Ti => ts)
+    if zero
+        X = rebuild(X; metadata=Dict(:time => origts, pairs(metadata(X))...))
+    end
+    return X
 end
 
 

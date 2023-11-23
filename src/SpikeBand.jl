@@ -25,7 +25,16 @@ getspikeamplitudes(sessionid::Number, args...) = getspikeamplitudes(Session(sess
 
 function getspiketimes(S::AbstractSession, structure::String)
     unitstructs = getunitmetrics(S)
-    unitids = unitstructs[unitstructs.structure_acronym.==structure, :].unit_id
+    if hasproperty(unitstructs, :structure_acronym)
+        structures = unitstructs.structure_acronym .== structure
+    else
+        structures = getstructureacronyms(S, unitstructs.ecephys_channel_id)
+    end
+    if hasproperty(unitstructs, :ecephys_unit_id)
+        unitids = unitstructs[structures.==structure, :].ecephys_unit_id
+    else
+        unitids = unitstructs[structures.==structure, :].unit_id
+    end
     spiketimes = filter(p -> p[1] in unitids, getspiketimes(S)) |> Dict
 end
 

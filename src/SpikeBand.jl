@@ -2,8 +2,9 @@ using SparseArrays
 using ProgressLogging
 using Random
 using IntervalSets
+import TimeseriesTools: spiketrain
 
-export downloadspikes, getspiketimes, getspikeamplitudes, formatspiketimes, spikematrix, getsessionpath, SpikeMatrix, spikematrix, alignspiketimes, countspikes, fanofactor, defaultfanobins, getspikes, getstructureacronyms, minspikediff, formatspikes, getisis, receptivefieldfilter, getmetric, getfano, getclosestchannels, getpeakchannels, getunitchannels
+export downloadspikes, getspiketimes, getspikeamplitudes, formatspiketimes, spikematrix, getsessionpath, SpikeMatrix, spikematrix, alignspiketimes, countspikes, fanofactor, defaultfanobins, getspikes, getstructureacronyms, minspikediff, formatspikes, getisis, receptivefieldfilter, getmetric, getfano, getclosestchannels, getpeakchannels, getunitchannels, getspiketrains
 
 function downloadspikes(S::AbstractSession)
     _ = S.pyObject.spike_times
@@ -41,6 +42,11 @@ end
 function getspiketimes(S::AbstractSession, unitids::Vector{Int})
     spiketimes = getspiketimes(S)
     Dict(a => b for (a, b) in spiketimes if a in unitids)
+end
+
+function getspiketrains(args...; kwargs...)
+    sp = getspiketimes(args...; kwargs...)
+    sp = Dict(k => spiketrain(v; metadata=Dict(:unit_id => k)) for (k, v) in sp)
 end
 
 function formatspiketimes(; sessionid=757216464, structure="VISp", stimulus="gabors", epoch=:longest, filter=true, kwargs...)
@@ -342,11 +348,12 @@ getclosestchannels(sessionid::Int, args...) = getclosestchannels(Session(session
 
 function getpeakchannels(session, units)
     metrics = getunitmetrics(session)
-    check = all(units .∈ (metrics.unit_id,))
+    k = hasproperty(metrics, :unit_id) ? :unit_id : :ecephys_unit_id
+    check = all(units .∈ (getproperty(metrics, k),))
     if !check
         @error "Some units do not have corresponding metrics"
     end
-    metrics = subset(metrics, :unit_id, units)
+    metrics = subset(metrics, k, units)
     channels = Dict(zip(units, metrics.peak_channel_id))
 end
 getpeakchannels(sessionid::Int, args...) = getpeakchannels(Session(sessionid), args...)

@@ -427,7 +427,6 @@ function _getchanneldepths(cdf, channels; method=:streamlines)
         streamlines = getstreamlines()
 
         df = cdf[cdf.anterior_posterior_ccf_coordinate.>0, :]
-        df = df[indexin(channels, df.id), :]
         x = df.anterior_posterior_ccf_coordinate
         y = df.dorsal_ventral_ccf_coordinate
         z = df.left_right_ccf_coordinate
@@ -452,6 +451,7 @@ function _getchanneldepths(cdf, channels; method=:streamlines)
 
         df.cortical_depth .= 0.0
         df[df.anterior_posterior_ccf_coordinate.>0, :cortical_depth] .= cortical_depth
+        df = df[indexin(channels, df.id), :]
         depths = df.cortical_depth
 
     end

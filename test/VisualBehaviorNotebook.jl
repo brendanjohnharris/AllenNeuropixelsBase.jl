@@ -7,21 +7,21 @@ using InteractiveUtils
 # ╔═╡ 98c9bbd2-aac5-4c90-ac0c-d8d935f5cdaf
 # For WGLMakie
 begin
-	using Pkg
-	Pkg.add("JSServe")
-	using JSServe
-	Page()
+    using Pkg
+    Pkg.add("JSServe")
+    using JSServe
+    Page()
 end
 
 # ╔═╡ c445ccf4-cf10-43b9-9c01-4051abc400ba
 begin
-	Pkg.activate("../")
-	# Pkg.add(url="https://github.com/brendanjohnharris/NWBStream.jl#main")
-	# Pkg.add(url="https://github.com/brendanjohnharris/AllenNeuropixelsBase.jl#main")
-	# # Pkg.add("WGLMakie")
-	# Pkg.add("DataFrames")
-	# Pkg.add("Statistics")
-	# Pkg.add("FileIO")
+    Pkg.activate("../")
+    # Pkg.add(url="https://github.com/brendanjohnharris/NWBStream.jl#main")
+    # Pkg.add(url="https://github.com/brendanjohnharris/AllenNeuropixelsBase.jl#main")
+    # # Pkg.add("WGLMakie")
+    # Pkg.add("DataFrames")
+    # Pkg.add("Statistics")
+    # Pkg.add("FileIO")
 end
 
 # ╔═╡ 79b92c17-cc5f-4ca2-8b08-f6015729a9a9
@@ -66,7 +66,7 @@ Interfacing with the Python [Allen SDK](https://github.com/AllenInstitute/AllenS
 """
 
 # ╔═╡ d8fd4541-08a5-4ace-a998-769771c976e8
-import AllenNeuropixelsBase as ANB 
+import AllenNeuropixelsBase as ANB
 
 # ╔═╡ 2e3d037c-932d-4d5a-afdb-351e836bdfb2
 # using WGLMakie
@@ -87,7 +87,7 @@ md"""We'll pick a session that has six probes:"""
 
 # ╔═╡ efd3ef52-4acb-4ffd-b794-1dfc4d9819c8
 function numprobes(sessionid)
-	session_table[session_table[!, :ecephys_session_id].==sessionid, :probe_count][1]
+    session_table[session_table[!, :ecephys_session_id].==sessionid, :probe_count][1]
 end
 
 # ╔═╡ e30e349c-6ad7-402b-90d1-7720b85a9c2c
@@ -95,12 +95,12 @@ md"And look for sessions that have probes intersecting the target regions listed
 
 # ╔═╡ d2d20884-0fcd-4ac7-8a14-dbf936445c3b
 function targetintersections(sessionid)
-	s = session_table[session_table.ecephys_session_id.==sessionid, :structure_acronyms][1]
-	targets = ["VISp", "VISl", "VISrl", "VISal", "VISpm", "VISam", "CA1", "CA3", "DG", "SUB", "ProS", "LGd", "LP", "APN"];
-	structures = eachmatch(r"'(.*?)'", s)
-	structures = [replace(x.match, r"'"=>s"") for x ∈ structures]
-	targetsintersected = [x ∈ structures for x ∈ targets]
-	return mean(targetsintersected)
+    s = session_table[session_table.ecephys_session_id.==sessionid, :structure_acronyms][1]
+    targets = ["VISp", "VISl", "VISrl", "VISal", "VISpm", "VISam", "CA1", "CA3", "DG", "SUB", "ProS", "LGd", "LP", "APN"]
+    structures = eachmatch(r"'(.*?)'", s)
+    structures = [replace(x.match, r"'" => s"") for x ∈ structures]
+    targetsintersected = [x ∈ structures for x ∈ targets]
+    return mean(targetsintersected)
 end;
 
 # ╔═╡ 99fe41d6-661d-4b9f-a853-2f32ace53d72
@@ -152,14 +152,14 @@ md"Some session-level metrics are:"
 
 # ╔═╡ fd03139c-4bd1-4f26-a8c3-46c3feefd9c5
 session_metrics = combine(groupby(sessionmetrics, :ecephys_session_id),
-		:ecephys_session_id => numprobes∘unique => :num_probes,
-		:ecephys_session_id => targetintersections∘unique => :target_intersections,
-		:genotype => (x->all(isequal.(x, ("wt/wt",)))) => :is_wt,
-		:max_drift=>median∘skipmissing,
-		:d_prime=>median∘skipmissing,
-		:isolation_distance=>median∘skipmissing,
-		:silhouette_score=>median∘skipmissing,
-		:snr=>median∘skipmissing)
+    :ecephys_session_id => numprobes ∘ unique => :num_probes,
+    :ecephys_session_id => targetintersections ∘ unique => :target_intersections,
+    :genotype => (x -> all(isequal.(x, ("wt/wt",)))) => :is_wt,
+    :max_drift => median ∘ skipmissing,
+    :d_prime => median ∘ skipmissing,
+    :isolation_distance => median ∘ skipmissing,
+    :silhouette_score => median ∘ skipmissing,
+    :snr => median ∘ skipmissing)
 
 # ╔═╡ 51eccd32-d4e9-4330-99f5-fca0f8534e43
 md"""
@@ -168,9 +168,9 @@ Of particular importance are the first five columns. The ideal session will have
 
 # ╔═╡ 927605f4-0b59-4871-a13f-420aadedd487
 oursession = subset(session_metrics,
-						:target_intersections => ByRow(>(0.85)),
-						:is_wt => ByRow(==(true)),
-						:max_drift_median_skipmissing => ByRow(<(99)))
+    :target_intersections => ByRow(>(0.85)),
+    :is_wt => ByRow(==(true)),
+    :max_drift_median_skipmissing => ByRow(<(99)))
 
 # ╔═╡ 5973ddbe-f839-44d8-af08-46b1813e8750
 sort!(oursession, :max_drift_median_skipmissing)
@@ -194,7 +194,8 @@ To mimic the Allen SDK's interface we can use a custom type wrapping a session o
 """
 
 # ╔═╡ c3093ce3-7b73-49d4-8ce8-aaea4b49b685
-session = ANB.VisualBehavior.Session(session_id); ANB.initialize!(session)
+session = ANB.VisualBehavior.Session(session_id);
+ANB.initialize!(session);
 
 # ╔═╡ 3ec0b209-2287-4fcf-be04-688bd4fb327a
 # sessionid = AN.getid(session)
@@ -209,7 +210,7 @@ probes = ANB.getprobes(session)
 md"We are only interested in channels located within the brain, so the `missing` structure ids are removed and the channels for this session become:"
 
 # ╔═╡ 5f944e90-5232-4508-9a3a-c678e6804104
-channels = subset(ANB.getchannels(session), :structure_acronym=>ByRow(!=("root")))
+channels = subset(ANB.getchannels(session), :structure_acronym => ByRow(!=("root")))
 
 # ╔═╡ 423edd0f-60ed-4d9a-b84a-47e47e560ae2
 md"""
@@ -244,11 +245,11 @@ The LFP data for our probe can be accessed as (warning, it is slow):
 
 # ╔═╡ f0241126-912b-4863-9d4e-917af1426602
 params = (;
-    sessionid = ANB.getid(session), #
-    stimulus = "spontaneous",
-    probeid, # 
+    sessionid=ANB.getid(session), #
+    stimulus="spontaneous",
+    probeid, #
     structure,
-    epoch = 2
+    epoch=2
 )
 
 # ╔═╡ 2a9ccb08-29a2-4f4b-a01a-2c97c12a96b8
@@ -264,7 +265,7 @@ md"And sorted by depth with:"
 # sortedLFP = AN.sortbydepth(session, probeid, LFP)[:, end:-1:1]
 
 # ╔═╡ 39ae3db9-b799-4389-80e7-e898e4e88a84
-# fig = AN.Plots.neuroslidingcarpet(sortedLFP[1:5000, :]; resolution=(800, 1600))
+# fig = AN.Plots.neuroslidingcarpet(sortedLFP[1:5000, :]; size=(800, 1600))
 
 # ╔═╡ 87ab5ec5-67a9-413d-8789-6a8b7113de65
 md"""

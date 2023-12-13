@@ -13,7 +13,7 @@ dimmatrix(a, b) = AbstractDimArray{T,2,Tuple{A,B}} where {T,A<:a,B<:b}
 export dimmatrix
 
 PSDMatrix = dimmatrix(:frequency, :channel)
-PSDVector = AbstractDimArray{T,1,Tuple{A},B} where {T,A<:Dim{:frequency},B}
+PSDVector = AbstractDimArray{T,1,Tuple{A},B} where {T,A<:Freq,B}
 LogPSDVector = AbstractDimArray{T,1,Tuple{A},B} where {T,A<:Dim{:logfrequency},B}
 
 duration(X::AbstractDimArray) = diff(extrema(dims(X, Ti)) |> collect) |> first
@@ -39,7 +39,7 @@ function Base.convert(::Type{LogPSDVector}, x::PSDVector)
     x = x[.!isinf.(dims(x, :logfrequency))]
 end
 function Base.convert(::Type{WaveletMatrix}, x::LogWaveletMatrix)
-    x = DimArray(x, (dims(x, Ti), Dim{:frequency}(exp10.(dims(x, :logfrequency)))); metadata=metadata(x), refdims=refdims(x))
+    x = DimArray(x, (dims(x, Ti), Freq(exp10.(dims(x, :logfrequency)))); metadata=metadata(x), refdims=refdims(x))
 end
 waveletmatrix(res::LogWaveletMatrix) = convert(WaveletMatrix, res)
 logwaveletmatrix(res::WaveletMatrix) = convert(LogWaveletMatrix, res)

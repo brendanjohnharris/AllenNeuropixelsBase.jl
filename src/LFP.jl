@@ -1,6 +1,7 @@
 using IntervalSets
 using HDF5
 using Statistics
+using Downloads
 
 export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod, getlfp, getlfptimes, getlfpchannels, samplingrate, WaveletMatrix, LogWaveletMatrix, formatlfp, getchannels, getchanneldepths, waveletmatrix, getunitdepths, getdim, gettimes, sortbydepth, rectifytime, stimulusepochs, stimulusintervals, gaborintervals, alignlfp, logwaveletmatrix, matchlfp, joinlfp, catlfp, channels2depths, selectepochs, getchannellayers, getstreamlines
 
@@ -324,13 +325,6 @@ export formatlfp
 
 
 function getstreamlines()
-    streamlinepath = abspath(referencespacemanifest, "../laplacian_10.nrrd")
-    if !isfile(streamlinepath)
-        # Download it
-        @info "Downloading streamline data, this may take a few minutes"
-        download("https://www.dropbox.com/sh/7me5sdmyt5wcxwu/AACFY9PQ6c79AiTsP8naYZUoa/laplacian_10.nrrd?dl=1", streamlinepath)
-
-    end
     streamlines = load(streamlinepath)
     streamlines = DimArray(streamlines.data,
         (

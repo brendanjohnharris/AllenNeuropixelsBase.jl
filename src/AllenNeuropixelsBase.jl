@@ -5,6 +5,7 @@ using CSV
 using TimeseriesTools
 using Preferences
 using AllenSDK
+using Downloads
 
 const brain_observatory = PythonCall.pynew()
 const stimulusmapping = PythonCall.pynew()
@@ -21,6 +22,22 @@ const nwb_api = PythonCall.pynew()
 const behavior_project_cache = PythonCall.pynew()
 const behavior_ecephys_session = PythonCall.pynew()
 export allensdk, brain_observatory, ecephys, ecephys_project_cache, mouse_connectivity_cache, ontologies_api, reference_space_cache, reference_space, behavior_ecephys_session, behavior_project_cache
+
+
+function setdatadir(datadir::String)
+    @set_preferences!("datadir" => datadir)
+    @info("New default datadir set; restart your Julia session for this change to take effect")
+end
+const datadir = replace(@load_preference("datadir", joinpath(pkgdir(AllenNeuropixelsBase), "data/")), "\\" => "/")
+const ecephysmanifest = replace(joinpath(datadir, "Ecephys", "manifest.json"), "\\" => "/")
+const behaviormanifest = replace(joinpath(datadir, "Behavior", "manifest.json"), "\\" => "/")
+const brainobservatorymanifest = replace(joinpath(datadir, "BrainObservatory", "manifest.json"), "\\" => "/")
+const mouseconnectivitymanifest = replace(joinpath(datadir, "MouseConnectivity", "manifest.json"), "\\" => "/")
+const referencespacemanifest = replace(joinpath(datadir, "ReferenceSpace", "manifest.json"), "\\" => "/")
+export setdatadir, datadir, ecephysmanifest, brainobservatorymanifest, mouseconnectivitymanifest, referencespacemanifest
+
+
+const streamlinepath = abspath(referencespacemanifest, "../laplacian_10.nrrd")
 
 function __init__()
     PythonCall.pycopy!(brain_observatory, pyimport("allensdk.brain_observatory"))
@@ -39,20 +56,12 @@ function __init__()
     PythonCall.pycopy!(behavior_ecephys_session, pyimport("allensdk.brain_observatory.ecephys.behavior_ecephys_session"))
 
     ecephys_project_cache.EcephysProjectCache.from_warehouse(manifest=ecephysmanifest)
-end
 
-function setdatadir(datadir::String)
-    @set_preferences!("datadir" => datadir)
-    @info("New default datadir set; restart your Julia session for this change to take effect")
+    if !isfile(streamlinepath)
+        @info "Downloading streamline data to $streamlinepath, this may take a few minutes"
+        Downloads.download("https://www.dropbox.com/sh/7me5sdmyt5wcxwu/AACFY9PQ6c79AiTsP8naYZUoa/laplacian_10.nrrd?dl=1", streamlinepath)
+    end
 end
-const datadir = replace(@load_preference("datadir", joinpath(pkgdir(AllenNeuropixelsBase), "data/")), "\\" => "/")
-const ecephysmanifest = replace(joinpath(datadir, "Ecephys", "manifest.json"), "\\" => "/")
-const behaviormanifest = replace(joinpath(datadir, "Behavior", "manifest.json"), "\\" => "/")
-const brainobservatorymanifest = replace(joinpath(datadir, "BrainObservatory", "manifest.json"), "\\" => "/")
-const mouseconnectivitymanifest = replace(joinpath(datadir, "MouseConnectivity", "manifest.json"), "\\" => "/")
-const referencespacemanifest = replace(joinpath(datadir, "ReferenceSpace", "manifest.json"), "\\" => "/")
-export setdatadir, datadir, ecephysmanifest, brainobservatorymanifest, mouseconnectivitymanifest, referencespacemanifest
-
 
 """
     loaddataframe(file, dir=datadir)::DataFrame

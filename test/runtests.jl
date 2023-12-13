@@ -2,7 +2,7 @@ import AllenNeuropixelsBase as ANB
 using AllenNeuropixelsBase.NWBStream
 using Test
 using AllenNeuropixelsBase.DataFrames
-ENV["JULIA_DEBUG"] = ["CUDAExt", "AllenNeuropixelsBase", "AllenNeuropixels"]
+ENV["JULIA_DEBUG"] = "CUDAExt,AllenNeuropixelsBase,AllenNeuropixels"
 
 # @testset "NWBStream.jl" begin
 #     f, io = @test_nowarn s3open("https://visual-behavior-neuropixels-data.s3.us-west-2.amazonaws.com/visual-behavior-neuropixels/behavior_ecephys_sessions/1044385384/ecephys_session_1044385384.nwb")

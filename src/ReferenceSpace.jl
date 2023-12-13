@@ -1,6 +1,6 @@
 using Colors
 using GeometryBasics
-using FileIO
+import FileIO: load
 
 export referencespacecache, getstructuretree, getstructurecolor, getstructurecolors, getstructuretreedepth, getstructurename, getstructuremesh, getstructureidmap
 

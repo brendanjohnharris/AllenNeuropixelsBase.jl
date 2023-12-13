@@ -25,12 +25,12 @@ const visualbehaviorbehavior = visualbehavior * "visual-behavior-neuropixels/"
 Return the URL for the neuropixels visual behavior project manifest file hosted on a given `hostname` server and version `manifest_version`.
 
 ## Arguments
-- `manifest_version::String`: The version of the manifest file. Default value is `"0.4.0"`.
+- `manifest_version::String`: The version of the manifest file. Default value is `"0.5.0"`.
 
 Other manifest version numbers can be identified here: https://s3.console.aws.amazon.com/s3/buckets/visual-behavior-neuropixels-data?prefix=visual-behavior-neuropixels%2Fmanifests%2F&region=us-west-2
 
 """
-function getmanifesturl(manifest_version="0.4.0")
+function getmanifesturl(manifest_version="0.5.0")
     object_key = "manifests/visual-behavior-neuropixels_project_manifest_v$manifest_version.json"
     return visualbehaviorbehavior * object_key
 end

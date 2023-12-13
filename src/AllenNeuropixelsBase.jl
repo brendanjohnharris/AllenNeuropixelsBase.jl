@@ -2,6 +2,7 @@ module AllenNeuropixelsBase
 using PythonCall
 using DataFrames
 using CSV
+using TimeseriesTools
 using Preferences
 using AllenSDK
 
@@ -44,12 +45,12 @@ function setdatadir(datadir::String)
     @set_preferences!("datadir" => datadir)
     @info("New default datadir set; restart your Julia session for this change to take effect")
 end
-const datadir = replace(@load_preference("datadir", joinpath(pkgdir(AllenNeuropixelsBase), "data/")), "\\"=>"/")
-const ecephysmanifest = replace(joinpath(datadir, "Ecephys", "manifest.json"), "\\"=>"/")
-const behaviormanifest = replace(joinpath(datadir, "Behavior", "manifest.json"), "\\"=>"/")
-const brainobservatorymanifest = replace(joinpath(datadir, "BrainObservatory", "manifest.json"), "\\"=>"/")
-const mouseconnectivitymanifest = replace(joinpath(datadir, "MouseConnectivity", "manifest.json"), "\\"=>"/")
-const referencespacemanifest = replace(joinpath(datadir, "ReferenceSpace", "manifest.json"), "\\"=>"/")
+const datadir = replace(@load_preference("datadir", joinpath(pkgdir(AllenNeuropixelsBase), "data/")), "\\" => "/")
+const ecephysmanifest = replace(joinpath(datadir, "Ecephys", "manifest.json"), "\\" => "/")
+const behaviormanifest = replace(joinpath(datadir, "Behavior", "manifest.json"), "\\" => "/")
+const brainobservatorymanifest = replace(joinpath(datadir, "BrainObservatory", "manifest.json"), "\\" => "/")
+const mouseconnectivitymanifest = replace(joinpath(datadir, "MouseConnectivity", "manifest.json"), "\\" => "/")
+const referencespacemanifest = replace(joinpath(datadir, "ReferenceSpace", "manifest.json"), "\\" => "/")
 export setdatadir, datadir, ecephysmanifest, brainobservatorymanifest, mouseconnectivitymanifest, referencespacemanifest
 
 

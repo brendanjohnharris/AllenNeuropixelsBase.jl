@@ -12,7 +12,7 @@ dimmatrix(a, b::Symbol) = AbstractDimArray{T,2,Tuple{A,B}} where {T,A<:a,B<:Dim{
 dimmatrix(a, b) = AbstractDimArray{T,2,Tuple{A,B}} where {T,A<:a,B<:b}
 export dimmatrix
 
-PSDMatrix = dimmatrix(:frequency, :channel)
+PSDMatrix = dimmatrix(Freq, :channel)
 PSDVector = AbstractDimArray{T,1,Tuple{A},B} where {T,A<:Freq,B}
 LogPSDVector = AbstractDimArray{T,1,Tuple{A},B} where {T,A<:Dim{:logfrequency},B}
 
@@ -27,15 +27,15 @@ end
 samplingrate(X::AbstractDimArray) = 1 / samplingperiod(X)
 
 
-WaveletMatrix = dimmatrix(Ti, :frequency) # Type for DimArrays containing wavelet transform info
+WaveletMatrix = dimmatrix(Ti, Freq) # Type for DimArrays containing wavelet transform info
 LogWaveletMatrix = dimmatrix(Ti, :logfrequency) # Type for DimArrays containing wavelet transform info
 export WaveletMatrix, LogWaveletMatrix
 function Base.convert(::Type{LogWaveletMatrix}, x::WaveletMatrix)
-    x = DimArray(x, (dims(x, Ti), Dim{:logfrequency}(log10.(dims(x, :frequency)))); metadata=metadata(x), refdims=refdims(x))
+    x = DimArray(x, (dims(x, Ti), Dim{:logfrequency}(log10.(dims(x, Freq)))); metadata=metadata(x), refdims=refdims(x))
     x = x[:, .!isinf.(dims(x, :logfrequency))]
 end
 function Base.convert(::Type{LogPSDVector}, x::PSDVector)
-    x = DimArray(x, (Dim{:logfrequency}(log10.(dims(x, :frequency))),); metadata=metadata(x), refdims=refdims(x))
+    x = DimArray(x, (Dim{:logfrequency}(log10.(dims(x, Freq))),); metadata=metadata(x), refdims=refdims(x))
     x = x[.!isinf.(dims(x, :logfrequency))]
 end
 function Base.convert(::Type{WaveletMatrix}, x::LogWaveletMatrix)
@@ -208,6 +208,7 @@ function getlfp(session::AbstractSession, probeid::Int; channels=getlfpchannels(
         times = ClosedInterval(times...)
     end
     if times isa Interval
+        @debug "Getting LFP data for $(length(channelidxs)) channels at $(times) times"
         timeidxs = findall(timeidxs .∈ (times,))
         if isempty(timeidxs)
             @warn "Session $(getid(session)), probe $probeid has no LFP for $(times)"
@@ -302,7 +303,7 @@ function formatlfp(session::AbstractSession; probeid=nothing, tol=6, stimulus="g
         X = rectifytime(getlfp(session, probeid, structure; inbrain=0.0); tol)
     else
         epoch = selectepochs(session, stimulus, epoch)
-        times = epoch.start_time .. epoch.stop_time
+        times = first(epoch.start_time) .. first(epoch.stop_time)
         X = rectifytime(getlfp(session, probeid, structure; inbrain=0.0, times); tol)
     end
     X = sortbydepth(session, probeid, X)

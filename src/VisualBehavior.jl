@@ -20,7 +20,7 @@ const visualbehavior = "https://visual-behavior-neuropixels-data.s3.us-west-2.am
 const visualbehaviorbehavior = visualbehavior * "visual-behavior-neuropixels/"
 
 """
-    getmanifesturl(manifest_version="0.4.0")
+    getmanifesturl(manifest_version="0.5.0")
 
 Return the URL for the neuropixels visual behavior project manifest file hosted on a given `hostname` server and version `manifest_version`.
 
@@ -261,7 +261,11 @@ end
 function ANB.getprobeobj(S::Session, probeid)
     probes = S.pyObject.get_probes_obj()
     probeids = [pyconvert(Int, probe.id) for probe in probes.probes]
-    thisprobe = findfirst(probeids .== probeid) - 1
+    i = findfirst(probeids .== probeid)
+    if isempty(i)
+        @error "Probe id $probeid not found in session $(getid(S))"
+    end
+    thisprobe = i - 1
     probe = probes.probes[thisprobe]
 end
 

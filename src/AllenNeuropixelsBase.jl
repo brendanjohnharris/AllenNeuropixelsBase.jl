@@ -73,6 +73,7 @@ function __init__()
     ecephys_project_cache.EcephysProjectCache.from_warehouse(manifest = ecephysmanifest)
 
     if !isfile(streamlinepath)
+        mkpath(dirname(streamlinepath))
         @info "Downloading streamline data to $streamlinepath, this may take a few minutes"
         Downloads.download("https://www.dropbox.com/sh/7me5sdmyt5wcxwu/AACFY9PQ6c79AiTsP8naYZUoa/laplacian_10.nrrd?dl=1",
                            streamlinepath)

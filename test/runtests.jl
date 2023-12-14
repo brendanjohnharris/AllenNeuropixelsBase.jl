@@ -28,13 +28,12 @@ ENV["JULIA_DEBUG"] = "CUDAExt,AllenNeuropixelsBase,AllenNeuropixels"
 
 @testset "Base" begin
     params = (;
-        sessionid=1044385384,
-        stimulus="spontaneous",
-        probeid=1044506935,
-        structure="VISl",
-        epoch=1,
-        pass=(1, 100)
-    )
+              sessionid = 1044385384,
+              stimulus = "spontaneous",
+              probeid = 1044506935,
+              structure = "VISl",
+              epoch = 1,
+              pass = (1, 100))
     X = ANB.formatlfp(; params...)
     @test X isa ANB.LFPMatrix
 end
@@ -71,10 +70,12 @@ using Test
     @test_nowarn ANB.getprobes(session)
 
     # Now try to get some LFP data
-    ANB._getlfp(session, probeid; channelidxs=1:length(ANB.getlfpchannels(session, probeid)), timeidxs=1:length(ANB.getlfptimes(session, probeid)))
+    ANB._getlfp(session, probeid;
+                channelidxs = 1:length(ANB.getlfpchannels(session, probeid)),
+                timeidxs = 1:length(ANB.getlfptimes(session, probeid)))
 
     structure = ANB.getprobestructures(session)[probeid]
-    structure = structure[occursin.(("VIS",), string.(structure))|>findfirst]
+    structure = structure[occursin.(("VIS",), string.(structure)) |> findfirst]
 
     channels = @test_nowarn ANB.getlfpchannels(session, probeid)
     cdf = @test_nowarn ANB.getchannels(session, probeid)
@@ -82,11 +83,14 @@ using Test
     depths = @test_nowarn ANB.getchanneldepths(session, probeid, channels)
 
     ANB.getlfp(session, structure)
-    a = ANB.formatlfp(session; probeid, stimulus="spontaneous", structure=structure, epoch=:longest)
-    b = ANB.formatlfp(; sessionid=session_id, probeid, stimulus="spontaneous", structure=structure, epoch=:longest) # Slower, has to build the session
+    a = ANB.formatlfp(session; probeid, stimulus = "spontaneous", structure = structure,
+                      epoch = :longest)
+    b = ANB.formatlfp(; sessionid = session_id, probeid, stimulus = "spontaneous",
+                      structure = structure, epoch = :longest) # Slower, has to build the session
     @assert a == b
 
     # Test behavior data
+    S = session
     @test ANB.gettrials(S) isa DataFrame
     @test ANB.getlicks(S) isa DataFrame
     @test ANB.getrewards(S) isa DataFrame

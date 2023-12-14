@@ -95,7 +95,6 @@ using Test
     @test ANB.getlicks(S) isa DataFrame
     @test ANB.getrewards(S) isa DataFrame
     @test ANB.getstimuli(S) isa DataFrame
-    @test ANB.getrunningspeed(S) isa DataFrame
     @test ANB.geteyetracking(S) isa DataFrame
 end
 

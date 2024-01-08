@@ -3,19 +3,27 @@ using HDF5
 using Statistics
 using Downloads
 
-export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod, getlfp, getlfptimes, getlfpchannels, samplingrate, WaveletMatrix, LogWaveletMatrix, formatlfp, getchannels, getchanneldepths, waveletmatrix, getunitdepths, getdim, gettimes, sortbydepth, rectifytime, stimulusepochs, stimulusintervals, gaborintervals, alignlfp, logwaveletmatrix, matchlfp, joinlfp, catlfp, channels2depths, selectepochs, getchannellayers, getstreamlines
+export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod,
+       getlfp, getlfptimes, getlfpchannels, samplingrate, WaveletMatrix, LogWaveletMatrix,
+       formatlfp, getchannels, getchanneldepths, waveletmatrix, getunitdepths, getdim,
+       gettimes, sortbydepth, rectifytime, stimulusepochs, stimulusintervals,
+       gaborintervals, alignlfp, logwaveletmatrix, matchlfp, joinlfp, catlfp,
+       channels2depths, selectepochs, getchannellayers, getstreamlines
 
-LFPVector = AbstractDimArray{T,1,Tuple{A},B} where {T,A<:DimensionalData.TimeDim,B}
-LFPMatrix = AbstractDimArray{T,2,Tuple{A,B}} where {T,A<:DimensionalData.TimeDim,B<:Dim{:channel}}
+LFPVector = AbstractDimArray{T, 1, Tuple{A}, B} where {T, A <: DimensionalData.TimeDim, B}
+LFPMatrix = AbstractDimArray{T, 2, Tuple{A, B}
+                             } where {T, A <: DimensionalData.TimeDim, B <: Dim{:channel}}
 export LFPMatrix, LFPVector # For simpler dispatch
-dimmatrix(a::Symbol, b::Symbol) = AbstractDimArray{T,2,Tuple{A,B}} where {T,A<:Dim{a},B<:Dim{b}}
-dimmatrix(a, b::Symbol) = AbstractDimArray{T,2,Tuple{A,B}} where {T,A<:a,B<:Dim{b}}
-dimmatrix(a, b) = AbstractDimArray{T,2,Tuple{A,B}} where {T,A<:a,B<:b}
+function dimmatrix(a::Symbol, b::Symbol)
+    AbstractDimArray{T, 2, Tuple{A, B}} where {T, A <: Dim{a}, B <: Dim{b}}
+end
+dimmatrix(a, b::Symbol) = AbstractDimArray{T, 2, Tuple{A, B}} where {T, A <: a, B <: Dim{b}}
+dimmatrix(a, b) = AbstractDimArray{T, 2, Tuple{A, B}} where {T, A <: a, B <: b}
 export dimmatrix
 
 PSDMatrix = dimmatrix(Freq, :channel)
-PSDVector = AbstractDimArray{T,1,Tuple{A},B} where {T,A<:Freq,B}
-LogPSDVector = AbstractDimArray{T,1,Tuple{A},B} where {T,A<:Dim{:logfrequency},B}
+PSDVector = AbstractDimArray{T, 1, Tuple{A}, B} where {T, A <: Freq, B}
+LogPSDVector = AbstractDimArray{T, 1, Tuple{A}, B} where {T, A <: Dim{:logfrequency}, B}
 
 duration(X::AbstractDimArray) = diff(extrema(dims(X, Ti)) |> collect) |> first
 function samplingperiod(X::AbstractDimArray)
@@ -27,42 +35,35 @@ function samplingperiod(X::AbstractDimArray)
 end
 samplingrate(X::AbstractDimArray) = 1 / samplingperiod(X)
 
-
 WaveletMatrix = dimmatrix(Ti, Freq) # Type for DimArrays containing wavelet transform info
 LogWaveletMatrix = dimmatrix(Ti, :logfrequency) # Type for DimArrays containing wavelet transform info
 export WaveletMatrix, LogWaveletMatrix
 function Base.convert(::Type{LogWaveletMatrix}, x::WaveletMatrix)
-    x = DimArray(x, (dims(x, Ti), Dim{:logfrequency}(log10.(dims(x, Freq)))); metadata=metadata(x), refdims=refdims(x))
+    x = DimArray(x, (dims(x, Ti), Dim{:logfrequency}(log10.(dims(x, Freq))));
+                 metadata = metadata(x), refdims = refdims(x))
     x = x[:, .!isinf.(dims(x, :logfrequency))]
 end
 function Base.convert(::Type{LogPSDVector}, x::PSDVector)
-    x = DimArray(x, (Dim{:logfrequency}(log10.(dims(x, Freq))),); metadata=metadata(x), refdims=refdims(x))
+    x = DimArray(x, (Dim{:logfrequency}(log10.(dims(x, Freq))),); metadata = metadata(x),
+                 refdims = refdims(x))
     x = x[.!isinf.(dims(x, :logfrequency))]
 end
 function Base.convert(::Type{WaveletMatrix}, x::LogWaveletMatrix)
-    x = DimArray(x, (dims(x, Ti), Freq(exp10.(dims(x, :logfrequency)))); metadata=metadata(x), refdims=refdims(x))
+    x = DimArray(x, (dims(x, Ti), Freq(exp10.(dims(x, :logfrequency))));
+                 metadata = metadata(x), refdims = refdims(x))
 end
 waveletmatrix(res::LogWaveletMatrix) = convert(WaveletMatrix, res)
 logwaveletmatrix(res::WaveletMatrix) = convert(LogWaveletMatrix, res)
 logpsdvector(res::PSDVector) = convert(LogPSDVector, res)
 
-
-
-
-
-
-
-
-
-
-
 function downloadlfp(S::AbstractSession, probeid::Int)
-    @assert(any(getprobeids(S) .== probeid), "Probe $probeid does not belong to session $(getid(S))")
-    @assert(subset(getprobes(S), :id => ByRow(==(probeid)))[!, :has_lfp_data][1], @error "Probe $probeid does not have LFP data")
+    @assert(any(getprobeids(S) .== probeid),
+            "Probe $probeid does not belong to session $(getid(S))")
+    @assert(subset(getprobes(S), :id => ByRow(==(probeid)))[!, :has_lfp_data][1],
+            @error "Probe $probeid does not have LFP data")
     _ = S.pyObject.get_lfp(probeid)
     return nothing
 end
-
 
 function structure2probe(S::AbstractSession, structure::String)
     channels = getchannels(S)
@@ -79,7 +80,7 @@ function getlfptimes(session::AbstractSession, probeid)
     end
 
     f = h5open(path)
-    times = f["acquisition"][splitext(basename(path))[1]][splitext(basename(path))[1]*"_data"]["timestamps"][:]
+    times = f["acquisition"][splitext(basename(path))[1]][splitext(basename(path))[1] * "_data"]["timestamps"][:]
     close(f)
     return times
 end
@@ -89,7 +90,7 @@ function getlfptimes(session::AbstractSession, probeid, idxs)
 end
 function getlfptimes(session::AbstractSession, probeid::Int, i::Interval)
     ts = getlfptimes(session::AbstractSession, probeid::Int)
-    ts = ts[ts.∈(i,)]
+    ts = ts[ts .∈ (i,)]
 end
 
 function getlfpchannels(session::AbstractSession, probeid)
@@ -117,9 +118,13 @@ end
 """
 Get the lfp data for a probe, providing *indices* for channels and times. See function below for indexing by channel ids and time values/intervals
 """
-function _getlfp(session::AbstractSession, probeid::Int; channelidxs=1:length(getlfpchannels(session, probeid)), timeidxs=1:length(getlfptimes(session, probeid)))
-    @assert(any(getprobeids(session) .== probeid), "Probe $probeid does not belong to session $(getid(session))")
-    @assert(subset(getprobes(session), :id => ByRow(==(probeid)))[!, :has_lfp_data][1], @error "Probe $probeid does not have LFP data")
+function _getlfp(session::AbstractSession, probeid::Int;
+                 channelidxs = 1:length(getlfpchannels(session, probeid)),
+                 timeidxs = 1:length(getlfptimes(session, probeid)))
+    @assert(any(getprobeids(session) .== probeid),
+            "Probe $probeid does not belong to session $(getid(session))")
+    @assert(subset(getprobes(session), :id => ByRow(==(probeid)))[!, :has_lfp_data][1],
+            @error "Probe $probeid does not have LFP data")
     path = getlfppath(session, probeid)
     if !isfile(path)
         downloadlfp(session, probeid)
@@ -135,14 +140,16 @@ function _getlfp(session::AbstractSession, probeid::Int; channelidxs=1:length(ge
     channelids = getlfpchannels(session, probeid)
     channelids = channelids[channelidxs]
     res = resolvenwblfp(session, probeid)
-    if (channelidxs isa Union{Int64,AbstractRange{Int64}}) & (timeidxs isa Union{Int64,AbstractRange{Int64}}) # Can use HDF5 slicing
-        lfp = f["acquisition"][res][res*"_data"]["data"][channelidxs, timeidxs]
-    elseif timeidxs isa Union{Int64,AbstractRange{Int64}}
-        lfp = [f["acquisition"][res][res*"_data"]["data"][i, timeidxs] for i ∈ channelidxs]
+    if (channelidxs isa Union{Int64, AbstractRange{Int64}}) &
+       (timeidxs isa Union{Int64, AbstractRange{Int64}}) # Can use HDF5 slicing
+        lfp = f["acquisition"][res][res * "_data"]["data"][channelidxs, timeidxs]
+    elseif timeidxs isa Union{Int64, AbstractRange{Int64}}
+        lfp = [f["acquisition"][res][res * "_data"]["data"][i, timeidxs]
+               for i in channelidxs]
         lfp = hcat(lfp...)
         dopermute = false
     else
-        lfp = read(f["acquisition"][res][res*"_data"]["data"])
+        lfp = read(f["acquisition"][res][res * "_data"]["data"])
         lfp = lfp[channelidxs, timeidxs]
     end
     if lfp isa Vector
@@ -154,48 +161,58 @@ function _getlfp(session::AbstractSession, probeid::Int; channelidxs=1:length(ge
     if dopermute
         lfp = permutedims(lfp, reverse(1:ndims(lfp)))
     end
-    X = DimArray(lfp, (Ti(timedata), Dim{:channel}(channelids)); metadata=Dict(:sessionid => getid(session), :probeid => probeid))
+    X = DimArray(lfp, (Ti(timedata), Dim{:channel}(channelids));
+                 metadata = Dict(:sessionid => getid(session), :probeid => probeid))
     close(f)
     X = sortbydepth(session, probeid, X)
     return X
 end
 
-
-function isinvalidtime(session::AbstractSession, probeids=getprobeids(session), times=NaN)
-    if hasproperty(session.pyObject, :get_invalid_times) && isempty(session.pyObject.get_invalid_times()) # No invalid times in this session!
+function isinvalidtime(session::AbstractSession, probeids = getprobeids(session),
+                       times = NaN)
+    if hasproperty(session.pyObject, :get_invalid_times) &&
+       isempty(session.pyObject.get_invalid_times()) # No invalid times in this session!
         return false
     end
-    intervals = [session.pyObject.get_invalid_times().start_time.values, session.pyObject.get_invalid_times().stop_time.values]
-    intervals = [[pyconvert(Float64, intervals[1][i]), pyconvert(Float64, intervals[2][i])] for i ∈ 0:(length(intervals[1])-1)]
+    intervals = [
+        session.pyObject.get_invalid_times().start_time.values,
+        session.pyObject.get_invalid_times().stop_time.values,
+    ]
+    intervals = [[pyconvert(Float64, intervals[1][i]), pyconvert(Float64, intervals[2][i])]
+                 for i in 0:(length(intervals[1]) - 1)]
     tags = session.pyObject.get_invalid_times().tags.values
     # tags = vcat([pyconvert(Array{Int64}, i) for i ∈ tags]...)
     # badprobes = tags[.!isnothing.(tags)]
     badprobes = []
     if times isa Interval
-        isininterval = [any(i .∈ (times,)) for i ∈ intervals]
+        isininterval = [any(i .∈ (times,)) for i in intervals]
     else
-        isininterval = [any((times .> i[1]) .& (times .< i[2])) for i ∈ intervals]
+        isininterval = [any((times .> i[1]) .& (times .< i[2])) for i in intervals]
     end
     return any(probeids .∈ (badprobes,)) & any(isininterval)
 end
-function isinvalidtime(session::AbstractNWBSession, probeids=getprobeids(session), times=NaN)
+function isinvalidtime(session::AbstractNWBSession, probeids = getprobeids(session),
+                       times = NaN)
     return !pyconvert(Bool, getfile(session).invalid_times == @py None)
 end
 
 """
 This is the one you should be using. Get lfp data by channel id and time intervals or vector. Also, throw error if you try to access an invalid time interval.
 """
-function getlfp(session::AbstractSession, probeid::Int; channels=getlfpchannels(session, probeid), times=ClosedInterval(extrema(getlfptimes(session, probeid))...), inbrain=false)
+function getlfp(session::AbstractSession, probeid::Int;
+                channels = getlfpchannels(session, probeid),
+                times = ClosedInterval(extrema(getlfptimes(session, probeid))...),
+                inbrain = false)
     if isinvalidtime(session, probeid, times)
         @error "Requested LFP data contains an invalid time..."
     end
     if inbrain isa Symbol || inbrain isa Real || inbrain
         depths = getchanneldepths(session, probeid, channels)
         if inbrain isa Real # A depth cutoff
-            channels = channels[depths.>inbrain]
+            channels = channels[depths .> inbrain]
         elseif inbrain isa Symbol # A mode
         else # Just cutoff at the surface
-            channels = channels[depths.>0]
+            channels = channels[depths .> 0]
         end
     end
 
@@ -235,27 +252,31 @@ end
 """
 If you want to downsample the LFP data, its quicker to use this function and then perform slicing afterwards (since getlfp() has to check all of the time coordinates you supply, which can be slow).
 """
-function getdownsampledlfp(session, probeid; downsample=100, timerange=ClosedInterval(extrema(getlfptimes(session, probeid))...), channels=getlfpchannels(session, probeid))
+function getdownsampledlfp(session, probeid; downsample = 100,
+                           timerange = ClosedInterval(extrema(getlfptimes(session, probeid))...),
+                           channels = getlfpchannels(session, probeid))
     if !(timerange isa Interval) && length(timerange) == 2
         timerange = ClosedInterval(timerange...)
     end
     timevals = getlfptimes(session, probeid)
     tidxs = timevals .∈ (timerange,)
     times = findfirst(tidxs):downsample:findlast(tidxs)
-    _getlfp(session, probeid; timeidxs=times)[:, At(channels)]
+    _getlfp(session, probeid; timeidxs = times)[:, At(channels)]
 end
-
 
 """
 Now we can overload `getlfp()` to index by structure
 """
-function getlfp(session::AbstractSession, probeid::Int, structures::Union{Vector{<:AbstractString},AbstractString}; kwargs...)
+function getlfp(session::AbstractSession, probeid::Int,
+                structures::Union{Vector{<:AbstractString}, AbstractString}; kwargs...)
     if structures isa String
         structures = [structures]
     end
-    channels = subset(getchannels(session, probeid), :structure_acronym => ByRow(in(structures)), skipmissing=true)
+    channels = subset(getchannels(session, probeid),
+                      :structure_acronym => ByRow(in(structures)), skipmissing = true)
     channels = channels.id ∩ getlfpchannels(session, probeid)
-    isempty(channels) && @error "No matching channels found for structure(s) $structures. Perhaps you have entered the wrong probe id?"
+    isempty(channels) &&
+        @error "No matching channels found for structure(s) $structures. Perhaps you have entered the wrong probe id?"
     getlfp(session, probeid; channels, kwargs...)
 end
 
@@ -265,7 +286,7 @@ function getlfp(S::AbstractSession, structure::AbstractString; kwargs...)
 end
 
 function getlfp(session, probeids::Vector{Int}, args...; kwargs...)
-    LFP = [getlfp(session, probeid, args...; kwargs...) for probeid ∈ probeids]
+    LFP = [getlfp(session, probeid, args...; kwargs...) for probeid in probeids]
 end
 
 function selectepochs(session, stimulus, epoch)
@@ -292,26 +313,30 @@ function selectepochs(session, stimulus, epoch)
     epoch = epochs[epoch, :] |> DataFrame
 end
 
-function formatlfp(session::AbstractSession; probeid=nothing, tol=6, stimulus="gabors", structure="VISp", epoch=:longest, kwargs...)
+function formatlfp(session::AbstractSession; probeid = nothing, tol = 6,
+                   stimulus = "gabors", structure = "VISp", epoch = :longest, kwargs...)
     if isnothing(probeid)
         probeid = getprobe(session, structure)
     end
     if isnothing(structure)
-        structure = getstructureacronyms(session, getchannels(session, probeid).id) |> unique |> skipmissing |> collect |> Vector{String}
-        structure = structure[structure.!=["root"]]
+        structure = getstructureacronyms(session, getchannels(session, probeid).id) |>
+                    unique |> skipmissing |> collect |> Vector{String}
+        structure = structure[structure .!= ["root"]]
     end
     if stimulus == "all"
-        X = rectifytime(getlfp(session, probeid, structure; inbrain=0.0); tol)
+        X = rectifytime(getlfp(session, probeid, structure; inbrain = 0.0); tol)
     else
         epoch = selectepochs(session, stimulus, epoch)
         times = first(epoch.start_time) .. first(epoch.stop_time)
-        X = rectifytime(getlfp(session, probeid, structure; inbrain=0.0, times); tol)
+        X = rectifytime(getlfp(session, probeid, structure; inbrain = 0.0, times); tol)
     end
     X = sortbydepth(session, probeid, X)
-    X = DimArray(X; metadata=Dict(:sessionid => getid(session), :probeid => probeid, :stimulus => stimulus, :structure => structure))
+    X = DimArray(X;
+                 metadata = Dict(:sessionid => getid(session), :probeid => probeid,
+                                 :stimulus => stimulus, :structure => structure))
 end
 
-function formatlfp(; sessionid=757216464, probeid=nothing, kwargs...)
+function formatlfp(; sessionid = 757216464, probeid = nothing, kwargs...)
     if sessionid < 1000000000
         session = Session(sessionid)
     else
@@ -321,23 +346,16 @@ function formatlfp(; sessionid=757216464, probeid=nothing, kwargs...)
 end
 export formatlfp
 
-
-
-
 function getstreamlines()
     streamlines = load(streamlinepath)
     streamlines = DimArray(streamlines.data,
-        (
-            Dim{:L}(getproperty(streamlines.axes[1], :val)),
-            Dim{:P}(getproperty(streamlines.axes[2], :val)),
-            Dim{:S}(getproperty(streamlines.axes[3], :val)),
-        ))
+                           (Dim{:L}(getproperty(streamlines.axes[1], :val)),
+                            Dim{:P}(getproperty(streamlines.axes[2], :val)),
+                            Dim{:S}(getproperty(streamlines.axes[3], :val))))
     return streamlines
 end
 
-
-
-function getchannellayers(session, channels, cdf=getchannels(session))
+function getchannellayers(session, channels, cdf = getchannels(session))
     function get_layer_name(acronym)
         try
             if !contains(acronym, "VIS")
@@ -358,29 +376,30 @@ function getchannellayers(session, channels, cdf=getchannels(session))
         y = floor.(Int, df.dorsal_ventral_ccf_coordinate / 10)
         z = floor.(Int, df.left_right_ccf_coordinate / 10)
 
-        x[x.<0] .= 0
-        y[y.<0] .= 0
-        z[z.<0] .= 0
+        x[x .< 0] .= 0
+        y[y .< 0] .= 0
+        z[z .< 0] .= 0
 
-        structure_ids = [annotations[_x.+1, _y.+1, _z.+1] for (_x, _y, _z) in zip(x, y, z)] # annotation volume is 1-indexed
+        structure_ids = [annotations[_x .+ 1, _y .+ 1, _z .+ 1]
+                         for (_x, _y, _z) in zip(x, y, z)] # annotation volume is 1-indexed
 
         return structure_ids .|> Int |> vec
     end
 
     df = cdf[indexin(channels, cdf.id), :]
-    annotations, _ = getannotationvolume(; resolution=10)
-    df = df[df.anterior_posterior_ccf_coordinate.>0, :]
+    annotations, _ = getannotationvolume(; resolution = 10)
+    df = df[df.anterior_posterior_ccf_coordinate .> 0, :]
     x = floor.(Int, df.anterior_posterior_ccf_coordinate / 10)
     y = floor.(Int, df.dorsal_ventral_ccf_coordinate / 10)
     z = floor.(Int, df.left_right_ccf_coordinate / 10)
 
     structure_ids = get_structure_ids(df, annotations)
     structure_tree = Dict(v => k for (k, v) in getstructureidmap())
-    structure_acronyms = [s == 0 ? "root" : getindex(structure_tree, s) for s in structure_ids]
+    structure_acronyms = [s == 0 ? "root" : getindex(structure_tree, s)
+                          for s in structure_ids]
     layers = [get_layer_name(acronym) for acronym in structure_acronyms]
     return layers, structure_acronyms
 end
-
 
 function getchannels(data::AbstractDimArray)
     dims(data, :channel).val
@@ -393,21 +412,23 @@ function getchanneldepths(session, probeid, channels; kwargs...)
     cdf = getchannels(session, probeid)
     return _getchanneldepths(cdf, channels; kwargs...)
 end
-function getchanneldepths(session, channels::Union{AbstractVector,Tuple}; kwargs...)
+function getchanneldepths(session, channels::Union{AbstractVector, Tuple}; kwargs...)
     cdf = getchannels(session) # Slightly slower than the above
     cdf = cdf[indexin(channels, cdf.id), :]
     cdfs = groupby(cdf, :probe_id)
-    depths = vcat([_getchanneldepths(c, c.id; kwargs...) for c ∈ cdfs]...)
+    depths = vcat([_getchanneldepths(c, c.id; kwargs...) for c in cdfs]...)
     depths = depths[indexin(channels, vcat(cdfs...).id)]
 end
-function _getchanneldepths(cdf, channels; method=:streamlines)
+function _getchanneldepths(cdf, channels; method = :streamlines)
     # surfaceposition = minimum(subset(cdf, :structure_acronym=>ByRow(ismissing)).probe_vertical_position) # Minimum because tip is at 0
 
     if method === :dorsal_ventral
         if any(ismissing.(cdf.structure_acronym))
-            surfaceposition = maximum(subset(cdf, :structure_acronym => ByRow(ismissing)).dorsal_ventral_ccf_coordinate)
+            surfaceposition = maximum(subset(cdf,
+                                             :structure_acronym => ByRow(ismissing)).dorsal_ventral_ccf_coordinate)
         elseif any(skipmissing(cdf.structure_acronym) .== ["root"]) # For VBN files, "root" rather than "missing"
-            surfaceposition = maximum(subset(cdf, :structure_acronym => ByRow(==("root"))).dorsal_ventral_ccf_coordinate)
+            surfaceposition = maximum(subset(cdf,
+                                             :structure_acronym => ByRow(==("root"))).dorsal_ventral_ccf_coordinate)
         end
         # Assume the first `missing` channel corresponds to the surfaceprobe_vertical_position
         idxs = indexin(channels, cdf.id)[:]
@@ -421,19 +442,19 @@ function _getchanneldepths(cdf, channels; method=:streamlines)
 
         streamlines = getstreamlines()
 
-        df = cdf[cdf.anterior_posterior_ccf_coordinate.>0, :]
+        df = cdf[cdf.anterior_posterior_ccf_coordinate .> 0, :]
         x = df.anterior_posterior_ccf_coordinate
         y = df.dorsal_ventral_ccf_coordinate
         z = df.left_right_ccf_coordinate
 
-
-        cortical_depth = [streamlines[Dim{:L}(Near(_x)), Dim{:P}(Near(_y)), Dim{:S}(Near(_z))] for (_x, _y, _z) ∈ zip(x, y, z)] # 1-based indexing
+        cortical_depth = [streamlines[Dim{:L}(Near(_x)), Dim{:P}(Near(_y)),
+                                      Dim{:S}(Near(_z))] for (_x, _y, _z) in zip(x, y, z)] # 1-based indexing
 
         # Linearly extrapolate the zero depths
         _xs = findall(cortical_depth .> 0)
         _ys = cortical_depth[_xs]
         depthf(x) = first([1 x] * ([ones(length(_xs)) _xs] \ _ys))
-        cortical_depth[cortical_depth.==0] .= depthf.(findall(cortical_depth .== 0))
+        cortical_depth[cortical_depth .== 0] .= depthf.(findall(cortical_depth .== 0))
         # f = Figure()
         # ax = Axis3(f[1, 1]; aspect=:data)
         # volume!(ax, dims(streamlines, Dim{:L})[1:100:end] |> collect,
@@ -443,12 +464,10 @@ function _getchanneldepths(cdf, channels; method=:streamlines)
         # meshscatter!(ax, x, y, z, markersize=100, color=AN.getchanneldepths(session, channels; method=:dorsal_ventral))
         # current_figure()
 
-
         df.cortical_depth .= 0.0
-        df[df.anterior_posterior_ccf_coordinate.>0, :cortical_depth] .= cortical_depth
+        df[df.anterior_posterior_ccf_coordinate .> 0, :cortical_depth] .= cortical_depth
         df = df[indexin(channels, df.id), :]
         depths = df.cortical_depth
-
     end
     return depths
 end
@@ -462,7 +481,8 @@ function getchanneldepths(X::LFPMatrix; kwargs...)
     getchanneldepths(S, metadata(X)[:probeid], X; kwargs...)
 end
 
-function channels2depths(session, probeid::Integer, X::AbstractDimArray, d::Integer; kwargs...)
+function channels2depths(session, probeid::Integer, X::AbstractDimArray, d::Integer;
+                         kwargs...)
     Y = deepcopy(X)
     _d = d
     c = dims(Y, _d) |> collect
@@ -497,7 +517,6 @@ end
 getdim(X::AbstractDimArray, dim) = dims(X, dim).val
 gettimes(X::AbstractDimArray) = getdim(X, Ti)
 
-
 function sortbydepth(session, probeid, LFP::AbstractDimArray)
     depths = getchanneldepths(session, probeid, getchannels(LFP))
     indices = Array{Any}([1:size(LFP, i) for i in 1:length(size(LFP))])
@@ -505,57 +524,62 @@ function sortbydepth(session, probeid, LFP::AbstractDimArray)
     return LFP[indices...]
 end
 
-
-function rectifytime(X::AbstractDimArray; tol=6, zero=false) # tol gives significant figures for rounding
+function rectifytime(X::AbstractDimArray; tol = 6, zero = false) # tol gives significant figures for rounding
     ts = gettimes(X)
     stp = ts |> diff |> mean
     err = ts |> diff |> std
     if err > stp / 10.0^(-tol)
         @warn "Time step is not approximately constant, skipping rectification"
     else
-        stp = round(stp; digits=tol)
-        t0, t1 = round.(extrema(ts); digits=tol)
+        stp = round(stp; digits = tol)
+        t0, t1 = round.(extrema(ts); digits = tol)
         if zero
-            origts = t0:stp:t1+(10000*stp)
+            origts = t0:stp:(t1 + (10000 * stp))
             t1 = t1 - t0
             t0 = 0
         end
-        ts = t0:stp:t1+(10000*stp)
+        ts = t0:stp:(t1 + (10000 * stp))
         ts = ts[1:size(X, Ti)] # Should be ok?
     end
     @assert length(ts) == size(X, Ti)
     X = set(X, Ti => ts)
     if zero
-        X = rebuild(X; metadata=Dict(:time => origts, pairs(metadata(X))...))
+        X = rebuild(X; metadata = Dict(:time => origts, pairs(metadata(X))...))
     end
     return X
 end
 
-
 function stimulusepochs(session, stim)
     stimtable = getepochs(session, stim)
-    stimtable.interval = [a .. b for (a, b) in zip(stimtable.start_time, stimtable.stop_time)]
+    stimtable.interval = [a .. b
+                          for (a, b) in zip(stimtable.start_time, stimtable.stop_time)]
     return stimtable
 end
 function stimulusintervals(session, stim)
     stimtable = getstimuli(session, stim)
-    stimtable.interval = [a .. b for (a, b) in zip(stimtable.start_time, stimtable.stop_time)]
+    stimtable.interval = [a .. b
+                          for (a, b) in zip(stimtable.start_time, stimtable.stop_time)]
     return stimtable
 end
 
 function gaborintervals(session)
     stimtable = getstimuli(session, "gabors")
-    stimtable.combined_pos = sqrt.(Meta.parse.(stimtable.x_position) .^ 2 .+ Meta.parse.(stimtable.y_position) .^ 2) # Radial position of the gabor stimulus
-    stimtable.interval = [a .. b for (a, b) in zip(stimtable.start_time, stimtable.stop_time)]
+    stimtable.combined_pos = sqrt.(Meta.parse.(stimtable.x_position) .^ 2 .+
+                                   Meta.parse.(stimtable.y_position) .^ 2) # Radial position of the gabor stimulus
+    stimtable.interval = [a .. b
+                          for (a, b) in zip(stimtable.start_time, stimtable.stop_time)]
     return stimtable
 end
 
 function radialgaborseries(session, times)
     stimtable = getstimuli(session, "gabors")
-    stimtable.combined_pos = sqrt.(Meta.parse.(stimtable.x_position) .^ 2 .+ Meta.parse.(stimtable.y_position) .^ 2) # Radial position of the gabor stimulus
+    stimtable.combined_pos = sqrt.(Meta.parse.(stimtable.x_position) .^ 2 .+
+                                   Meta.parse.(stimtable.y_position) .^ 2) # Radial position of the gabor stimulus
     gaborseries = DimArray(zeros(length(times)), (Ti(times),))
     for pos in unique(stimtable.combined_pos)
-        gabortimes = [a .. b for (a, b, x) in zip(stimtable.start_time, stimtable.stop_time, stimtable.combined_pos) if x == pos]
+        gabortimes = [a .. b
+                      for (a, b, x) in zip(stimtable.start_time, stimtable.stop_time,
+                                           stimtable.combined_pos) if x == pos]
         for ts in gabortimes
             gaborseries[Ti(ts)] .= pos
         end
@@ -563,11 +587,13 @@ function radialgaborseries(session, times)
     return gaborseries
 end
 
-function alignlfp(session, X, ::Val{:gabors}; x_position=nothing, y_position=nothing)
+function alignlfp(session, X, ::Val{:gabors}; x_position = nothing, y_position = nothing)
     gaborstim = gaborintervals(session)
     X = rectifytime(X)
-    isnothing(x_position) || (gaborstim = gaborstim[Meta.parse.(gaborstim.x_position).==x_position, :])
-    isnothing(y_position) || (gaborstim = gaborstim[Meta.parse.(gaborstim.y_position).==y_position, :])
+    isnothing(x_position) ||
+        (gaborstim = gaborstim[Meta.parse.(gaborstim.x_position) .== x_position, :])
+    isnothing(y_position) ||
+        (gaborstim = gaborstim[Meta.parse.(gaborstim.y_position) .== y_position, :])
     _X = [X[Ti(g)] for g in gaborstim.interval]
     _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X] # Catch any that are one sample too long
     # _X = DimArray(mean(collect.(_X)), (Ti(step(dims(X, Ti)):step(dims(X, Ti)):step(dims(X, Ti))*minimum(size.(_X, Ti))), dims(X, Dim{:channel})))
@@ -576,8 +602,8 @@ end
 
 function alignlfp(session, X, ::Val{:static_gratings})
     stim = stimulusintervals(session, "static_gratings")
-    stim = stim[stim.start_time.>minimum(dims(X, Ti)), :]
-    stim = stim[stim.stop_time.<maximum(dims(X, Ti)), :]
+    stim = stim[stim.start_time .> minimum(dims(X, Ti)), :]
+    stim = stim[stim.stop_time .< maximum(dims(X, Ti)), :]
     X = rectifytime(X)
     _X = [X[Ti(g)] for g in stim.interval]
     _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X]
@@ -587,15 +613,15 @@ end
 """
 For flashes alignment, `trail=false` will return only the data from within the flash period. `trail=onset` will return the data from the onset of the flash to the onset of the flash through to the onset of the next flash. `trail=offset` will return the data from the offset of the flash to the onset of the next flash.
 """
-function alignlfp(session, X, ::Val{:flashes}; trail=:offset)
+function alignlfp(session, X, ::Val{:flashes}; trail = :offset)
     is = stimulusintervals(session, "flashes")
     if trail == :onset
         onsets = is.start_time
-        is = [onsets[i] .. onsets[i+1] for i in 1:length(onsets)-1]
+        is = [onsets[i] .. onsets[i + 1] for i in 1:(length(onsets) - 1)]
     elseif trail == :offset
         offsets = is.stop_time
         onsets = is.start_time[2:end]
-        is = [offsets[i] .. onsets[i] for i in 1:length(offsets)-1]
+        is = [offsets[i] .. onsets[i] for i in 1:(length(offsets) - 1)]
     else
         is = is.interval
     end
@@ -615,7 +641,9 @@ end
 #     return _X
 # end
 
-alignlfp(session, X, stimulus::Union{String,Symbol}="gabors"; kwargs...) = alignlfp(session, X, stimulus |> Symbol |> Val; kwargs...)
+function alignlfp(session, X, stimulus::Union{String, Symbol} = "gabors"; kwargs...)
+    alignlfp(session, X, stimulus |> Symbol |> Val; kwargs...)
+end
 
 """
 Adjust the times of LFP matrix Y so that they match the matrix X
@@ -632,7 +660,7 @@ function matchlfp(X, Y)
 end
 
 function intersectlfp(X::AbstractVector)
-    Y = [rectifytime(x; tol=10) for x in X]
+    Y = [rectifytime(x; tol = 10) for x in X]
     ts = dims.(Y, Ti)
     ts = [Interval(extrema(t)...) for t in ts]
     int = reduce(intersect, ts)
@@ -643,16 +671,16 @@ function intersectlfp(X::AbstractVector)
     # @assert all(s .== s[1])
     length = minimum(size.(Y, 1))
     idxs = 1:length
-    Y = cat([y[idxs, :] for y in Y]..., dims=2)
+    Y = cat([y[idxs, :] for y in Y]..., dims = 2)
 end
 
 function catlfp(X::AbstractVector)
-    Y = [rectifytime(x; tol=10) for x in X]
+    Y = [rectifytime(x; tol = 10) for x in X]
     ts = dims.(Y, Ti)
     s = step.(ts)
     @assert all([dims(Y[1], 2)] .== dims.(Y, (2,)))
     @assert all(s .≈ s[1])
     s = s[1]
-    Y = cat(Y..., dims=Ti)
-    set(Y, Ti => Ti(s:s:s*size(Y, 1)))
+    Y = cat(Y..., dims = Ti)
+    set(Y, Ti => Ti(s:s:(s * size(Y, 1))))
 end

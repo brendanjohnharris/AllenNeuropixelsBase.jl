@@ -355,7 +355,15 @@ function getstreamlines()
     return streamlines
 end
 
+function getchannellayers(session, X::LFPMatrix, cdf = getchannels(session))
+    if Dim{:layer} ∈ refdims(X)
+        return X
+    end
+    layers = getchannellayers(session, dims(X, :channel) |> collect, cdf)
+    addrefdim(X, Dim{:layer}(layers[1]))
+end
 function getchannellayers(session, channels, cdf = getchannels(session))
+    channels = collect(channels)
     function get_layer_name(acronym)
         try
             if !contains(acronym, "VIS")
@@ -398,6 +406,12 @@ function getchannellayers(session, channels, cdf = getchannels(session))
     structure_acronyms = [s == 0 ? "root" : getindex(structure_tree, s)
                           for s in structure_ids]
     layers = [get_layer_name(acronym) for acronym in structure_acronyms]
+    structure_acronyms = map(structure_acronyms) do s
+        while isnothing(tryparse(Float64, string(last(s))))
+            s = s[1:(end - 1)] # Truncating sublayer numbers
+        end
+        s
+    end
     return layers, structure_acronyms
 end
 
@@ -405,18 +419,33 @@ function getchannels(data::AbstractDimArray)
     dims(data, :channel).val
 end
 
-"""
-At the moment this is just a proxy: distance along the probe to the cortical surface
-"""
+function getchanneldepths(session, d::DimensionalData.Dimension; kwargs...)
+    getchanneldepths(session, d.val.data; kwargs...)
+end
+function getchanneldepths(session::AbstractSession, X::LFPMatrix; method = :streamlines,
+                          kwargs...)
+    if Dim{:depth} ∈ refdims(X) && haskey(metadata(X), :depth_method) &&
+       metadata(X)[:depth_method] === method
+        @warn "Depth information already present in this LFP matrix, use `refdims(X, :depth)` to access it"
+        return X
+    else
+        depths = Dim{:depth}(getchanneldepths(session, dims(X, :channel); method,
+                                              kwargs...))
+        X = addrefdim(X, depths)
+        return addmetadata(X; depthmethod = method)
+    end
+end
 function getchanneldepths(session, probeid, channels; kwargs...)
     cdf = getchannels(session, probeid)
     return _getchanneldepths(cdf, channels; kwargs...)
 end
 function getchanneldepths(session, channels::Union{AbstractVector, Tuple}; kwargs...)
-    cdf = getchannels(session) # Slightly slower than the above
-    cdf = cdf[indexin(channels, cdf.id), :]
+    _cdf = getchannels(session) # Slightly slower than the above
+    cdf = _cdf[indexin(channels, _cdf.id), :]
     cdfs = groupby(cdf, :probe_id)
-    depths = vcat([_getchanneldepths(c, c.id; kwargs...) for c in cdfs]...)
+    probeids = [unique(c.probe_id)[1] for c in cdfs]
+    depths = vcat([_getchanneldepths(_cdf[_cdf.probe_id .== p, :], c.id; kwargs...)
+                   for (p, c) in zip(probeids, cdfs)]...)
     depths = depths[indexin(channels, vcat(cdfs...).id)]
 end
 function _getchanneldepths(cdf, channels; method = :streamlines)
@@ -434,6 +463,22 @@ function _getchanneldepths(cdf, channels; method = :streamlines)
         idxs = indexin(channels, cdf.id)[:]
         # alldepths = surfaceposition .- cdf.probe_vertical_position # in μm
         alldepths = cdf.dorsal_ventral_ccf_coordinate .- surfaceposition # in μm
+        depths = fill(NaN, size(idxs))
+        depths[.!isnothing.(idxs)] = alldepths[idxs[.!isnothing.(idxs)]]
+    elseif method === :probe
+        if any(ismissing.(cdf.structure_acronym))
+            surfaceposition = minimum(subset(cdf,
+                                             :structure_acronym => ByRow(ismissing)).probe_vertical_position)
+        elseif any(skipmissing(cdf.structure_acronym) .== ["root"]) # For VBN files, "root" rather than "missing"
+            surfaceposition = minimum(subset(cdf,
+                                             :structure_acronym => ByRow(==("root"))).probe_vertical_position)
+        else
+            error("No missing channels found, cannot identify surface position")
+        end
+        # Assume the first `missing` channel corresponds to the surfaceprobe_vertical_position
+        idxs = indexin(channels, cdf.id)[:]
+        # alldepths = surfaceposition .- cdf.probe_vertical_position # in μm
+        alldepths = surfaceposition .- cdf.probe_vertical_position # in μm
         depths = fill(NaN, size(idxs))
         depths[.!isnothing.(idxs)] = alldepths[idxs[.!isnothing.(idxs)]]
     elseif method === :streamlines # This one only really works for the cortex. Anythign outside the cortex is a guess based on linear extrapolation.
@@ -468,6 +513,8 @@ function _getchanneldepths(cdf, channels; method = :streamlines)
         df[df.anterior_posterior_ccf_coordinate .> 0, :cortical_depth] .= cortical_depth
         df = df[indexin(channels, df.id), :]
         depths = df.cortical_depth
+    else
+        error("`$method` is not a valid method of calculating depths")
     end
     return depths
 end
@@ -500,6 +547,14 @@ function channels2depths(session, probeids::Vector, X::AbstractDimArray, d; kwar
         depths = getchanneldepths(session, probeid, c; kwargs...)
         Y = set(Y, dims(Y, _d) => Dim{:depth}(depths))
     end
+    return Y
+end
+function channels2depths(session, X::AbstractDimArray; kwargs...)
+    Y = deepcopy(X)
+    probeid = X.metadata[:probeid]
+    c = dims(Y, :channel) |> collect
+    depths = getchanneldepths(session, probeid, c; kwargs...)
+    Y = set(Y, dims(Y, :channel) => Dim{:depth}(depths))
     return Y
 end
 
@@ -615,6 +670,23 @@ For flashes alignment, `trail=false` will return only the data from within the f
 """
 function alignlfp(session, X, ::Val{:flashes}; trail = :offset)
     is = stimulusintervals(session, "flashes")
+    if trail == :onset
+        onsets = is.start_time
+        is = [onsets[i] .. onsets[i + 1] for i in 1:(length(onsets) - 1)]
+    elseif trail == :offset
+        offsets = is.stop_time
+        onsets = is.start_time[2:end]
+        is = [offsets[i] .. onsets[i] for i in 1:(length(offsets) - 1)]
+    else
+        is = is.interval
+    end
+    X = rectifytime(X)
+    _X = [X[Ti(g)] for g in is]
+    _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X] # Catch any that are one sample too long
+    return _X
+end
+function alignlfp(session, X, ::Val{:flash_250ms}; trail = :offset)
+    is = stimulusintervals(session, "flash_250ms")
     if trail == :onset
         onsets = is.start_time
         is = [onsets[i] .. onsets[i + 1] for i in 1:(length(onsets) - 1)]

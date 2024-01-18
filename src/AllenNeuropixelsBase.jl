@@ -21,6 +21,7 @@ const reference_space = PythonCall.pynew()
 const nwb_api = PythonCall.pynew()
 const behavior_project_cache = PythonCall.pynew()
 const behavior_ecephys_session = PythonCall.pynew()
+const _behaviorcache = PythonCall.pynew()
 export allensdk, brain_observatory, ecephys, ecephys_project_cache,
        mouse_connectivity_cache, ontologies_api, reference_space_cache, reference_space,
        behavior_ecephys_session, behavior_project_cache
@@ -79,6 +80,8 @@ function __init__()
                            streamlinepath)
         @info "Download streamline data with status $(isfile(streamlinepath))"
     end
+
+    PythonCall.pycopy!(_behaviorcache, __behaviorcache())
 end
 
 """

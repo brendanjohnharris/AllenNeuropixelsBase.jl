@@ -33,7 +33,7 @@ const datadir = replace(@load_preference("datadir",
                                          joinpath(pkgdir(AllenNeuropixelsBase), "data/")),
                         "\\" => "/")
 const ecephysmanifest = replace(joinpath(datadir, "Ecephys", "manifest.json"), "\\" => "/")
-const behaviormanifest = replace(joinpath(datadir, "Behavior", "manifest.json"),
+const behaviormanifest = replace(joinpath(datadir, "Behavior"),
                                  "\\" => "/")
 const brainobservatorymanifest = replace(joinpath(datadir, "BrainObservatory",
                                                   "manifest.json"), "\\" => "/")
@@ -42,7 +42,7 @@ const mouseconnectivitymanifest = replace(joinpath(datadir, "MouseConnectivity",
 const referencespacemanifest = replace(joinpath(datadir, "ReferenceSpace", "manifest.json"),
                                        "\\" => "/")
 export setdatadir, datadir, ecephysmanifest, brainobservatorymanifest,
-       mouseconnectivitymanifest, referencespacemanifest
+       mouseconnectivitymanifest, referencespacemanifest, behaviormanifest
 
 const streamlinepath = abspath(referencespacemanifest, "../laplacian_10.nrrd")
 

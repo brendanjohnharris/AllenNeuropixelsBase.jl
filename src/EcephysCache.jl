@@ -11,7 +11,11 @@ function ecephyscache()
     ecephys_project_cache.EcephysProjectCache.from_warehouse(manifest = ecephysmanifest)
 end
 function behaviorcache()
-    behavior_project_cache.VisualBehaviorNeuropixelsProjectCache.from_s3_cache(cache_dir = behaviormanifest)
+    if isfile(behaviormanifest)
+        behavior_project_cache.VisualBehaviorNeuropixelsProjectCache.from_local_cache(; cache_dir=behaviormanifest) # So we can work offline
+    else
+        behavior_project_cache.VisualBehaviorNeuropixelsProjectCache.from_s3_cache(cache_dir = behaviormanifest)
+    end
 end
 
 """

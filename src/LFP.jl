@@ -286,7 +286,7 @@ function getlfp(S::AbstractSession, structure::AbstractString; kwargs...)
     getlfp(S, probeid, structure; kwargs...)
 end
 
-function getlfp(session, probeids::Vector{Int}, args...; kwargs...)
+function getlfp(session::AbstractSession, probeids::Vector{Int}, args...; kwargs...)
     LFP = [getlfp(session, probeid, args...; kwargs...) for probeid in probeids]
 end
 

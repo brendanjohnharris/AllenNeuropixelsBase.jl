@@ -15,7 +15,7 @@ function __behaviorcache()
     cache = behavior_project_cache.VisualBehaviorNeuropixelsProjectCache
     if (isdir(behaviormanifest) ||
         isfile(behaviormanifest)) && haskey(ENV, "ALLEN_NEUROPIXELS_OFFLINE") &&
-       ENV["ALLEN_NEUROPIXELS_OFFLINE"] == true
+       ENV["ALLEN_NEUROPIXELS_OFFLINE"] == "true"
         cache.from_local_cache(; cache_dir = behaviormanifest) # So we can work offline
     else
         cache.from_s3_cache(cache_dir = behaviormanifest)

@@ -4,6 +4,29 @@ using Test
 using AllenNeuropixelsBase.DataFrames
 ENV["JULIA_DEBUG"] = "CUDAExt,AllenNeuropixelsBase,AllenNeuropixels"
 
+begin # * Download the files
+    params = (;
+        sessionid=1044385384,
+        stimulus="spontaneous",
+        probeid=1044506935,
+        structure="VISl",
+        epoch=1,
+        pass=(1, 100))
+    X = ANB.formatlfp(; params...)
+
+    session_id = 1152811536
+    session = ANB.Session(session_id)
+    ANB.getprobes(session)
+    probeid = @test_nowarn ANB.getprobeids(session)[2]
+    ANB.getprobestructures(session)[probeid]
+    ANB.listprobes(session)
+    ANB.getepochs(session)
+    ANB.getprobes(session)
+    ANB._getlfp(session, probeid;
+        channelidxs=1:length(ANB.getlfpchannels(session, probeid)),
+        timeidxs=1:length(ANB.getlfptimes(session, probeid)))
+end
+
 # @testset "NWBStream.jl" begin
 #     f, io = @test_nowarn s3open("https://visual-behavior-neuropixels-data.s3.us-west-2.amazonaws.com/visual-behavior-neuropixels/behavior_ecephys_sessions/1044385384/ecephys_session_1044385384.nwb")
 #     s3close(io)
@@ -28,12 +51,12 @@ ENV["JULIA_DEBUG"] = "CUDAExt,AllenNeuropixelsBase,AllenNeuropixels"
 
 @testset "Base" begin
     params = (;
-              sessionid = 1044385384,
-              stimulus = "spontaneous",
-              probeid = 1044506935,
-              structure = "VISl",
-              epoch = 1,
-              pass = (1, 100))
+        sessionid=1044385384,
+        stimulus="spontaneous",
+        probeid=1044506935,
+        structure="VISl",
+        epoch=1,
+        pass=(1, 100))
     X = ANB.formatlfp(; params...)
     @test X isa ANB.LFPMatrix
 end
@@ -54,9 +77,10 @@ end
 import AllenNeuropixelsBase as ANB
 using Test
 @testset "Visual Behavior" begin
-    st = @test_nowarn ANB.VisualBehavior.getsessiontable()
+    # st = @test_nowarn ANB.VisualBehavior.getsessiontable()
     # @test st isa DataFrame
-    session_id = st[end, :ecephys_session_id]
+    # session_id = st[end, :ecephys_session_id]
+    session_id = 1152811536
     session = ANB.Session(session_id)
 
     # test_file = "/home/brendan/OneDrive/Masters/Code/Vortices/Julia/AllenSDK/test/ecephys_session_1152811536.nwb"
@@ -71,11 +95,11 @@ using Test
 
     # Now try to get some LFP data
     ANB._getlfp(session, probeid;
-                channelidxs = 1:length(ANB.getlfpchannels(session, probeid)),
-                timeidxs = 1:length(ANB.getlfptimes(session, probeid)))
+        channelidxs=1:length(ANB.getlfpchannels(session, probeid)),
+        timeidxs=1:length(ANB.getlfptimes(session, probeid)))
 
     structure = ANB.getprobestructures(session)[probeid]
-    structure = structure[occursin.(("VIS",), string.(structure)) |> findfirst]
+    structure = structure[occursin.(("VIS",), string.(structure))|>findfirst]
 
     channels = @test_nowarn ANB.getlfpchannels(session, probeid)
     cdf = @test_nowarn ANB.getchannels(session, probeid)
@@ -83,10 +107,10 @@ using Test
     depths = @test_nowarn ANB.getchanneldepths(session, probeid, channels)
 
     ANB.getlfp(session, structure)
-    a = ANB.formatlfp(session; probeid, stimulus = "spontaneous", structure = structure,
-                      epoch = :longest)
-    b = ANB.formatlfp(; sessionid = session_id, probeid, stimulus = "spontaneous",
-                      structure = structure, epoch = :longest) # Slower, has to build the session
+    a = ANB.formatlfp(session; probeid, stimulus="spontaneous", structure=structure,
+        epoch=:longest)
+    b = ANB.formatlfp(; sessionid=session_id, probeid, stimulus="spontaneous",
+        structure=structure, epoch=:longest) # Slower, has to build the session
     @assert a == b
 
     # Test behavior data

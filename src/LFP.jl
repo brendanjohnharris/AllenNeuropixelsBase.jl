@@ -315,7 +315,7 @@ function selectepochs(session, stimulus, epoch)
 end
 
 function formatlfp(session::AbstractSession; probeid = nothing, tol = 6,
-                   stimulus, structure, epoch = :longest, kwargs...)
+                   stimulus, structure, epoch = :longest, rectify = true, kwargs...)
     if isnothing(probeid)
         probeid = getprobe(session, structure)
     end
@@ -325,11 +325,14 @@ function formatlfp(session::AbstractSession; probeid = nothing, tol = 6,
         structure = structure[structure .!= ["root"]]
     end
     if stimulus == "all"
-        X = rectifytime(getlfp(session, probeid, structure; inbrain = 0.0); tol)
+        X = getlfp(session, probeid, structure; inbrain = 0.0)
     else
         epoch = selectepochs(session, stimulus, epoch)
         times = first(epoch.start_time) .. first(epoch.stop_time)
-        X = rectifytime(getlfp(session, probeid, structure; inbrain = 0.0, times); tol)
+        X = getlfp(session, probeid, structure; inbrain = 0.0, times)
+    end
+    if rectify
+        X = rectifytime(X; tol)
     end
     X = addmetadata(X; stimulus, structure)
 end

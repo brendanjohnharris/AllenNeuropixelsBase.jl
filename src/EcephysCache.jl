@@ -294,6 +294,7 @@ function getstimuli(S::AbstractSession)
     if !hasproperty(str, :stop_time)
         str.stop_time = str.end_time
     end
+
     return str
 end
 getstimulus = getstimuli

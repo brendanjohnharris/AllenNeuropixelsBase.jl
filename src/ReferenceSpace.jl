@@ -2,18 +2,21 @@ using Colors
 using GeometryBasics
 import FileIO: load
 
-export referencespacecache, getstructuretree, getstructurecolor, getstructurecolors, getstructuretreedepth, getstructurename, getstructuremesh, getstructureidmap
+export referencespacecache, getstructuretree, getstructurecolor, getstructurecolors,
+       getstructuretreedepth, getstructurename, getstructuremesh, getstructureidmap
 
-function referencespacecache(reference_space_key="annotation/ccf_2017"; resolution=25, manifest=referencespacemanifest)
-    reference_space_cache.ReferenceSpaceCache(resolution, reference_space_key, manifest=manifest)
+function referencespacecache(reference_space_key = "annotation/ccf_2017"; resolution = 25,
+                             manifest = referencespacemanifest)
+    reference_space_cache.ReferenceSpaceCache(resolution, reference_space_key,
+                                              manifest = manifest)
 end
 
-function getstructuretree(space=referencespacecache(), id=1) # Default id is mouse brain atlas
+function getstructuretree(space = referencespacecache(), id = 1) # Default id is mouse brain atlas
     id = Int(id)
-    space.get_structure_tree(structure_graph_id=id)
+    space.get_structure_tree(structure_graph_id = id)
 end
 
-function getstructurecolor(id::Union{Number,Missing}; tree=getstructuretree())
+function getstructurecolor(id::Union{Number, Missing}; tree = getstructuretree())
     !ismissing(id) || return RGB(0.0, 0.0, 0.0)
     id = Int(id)
     d = tree.get_structures_by_id([id])[0]
@@ -33,7 +36,6 @@ function getstructuretreedepth(id) # How many parents does this structure have (
     length(d["structure_id_path"])
 end
 
-
 function getstructurename(id::Number)
     id = Int(id)
     tree = getstructuretree()
@@ -46,13 +48,11 @@ function getstructurename(acronym::String)
     pyconvert(String, d["name"])
 end
 
-
 function getstructureid(acronym::String)
     tree = getstructuretree()
     d = tree.get_structures_by_acronym([acronym])[0]
     pyconvert(Int, d["id"])
 end
-
 
 function getallstructureids(args...)
     t = getstructuretree(args...)
@@ -62,20 +62,23 @@ end
 
 #! Can do the rest of this dict by eval?
 
-function buildreferencespace(tree=getstructuretree(), annotation=getannotationvolume(), resolution=(25, 25, 25))
+function buildreferencespace(tree = getstructuretree(), annotation = getannotationvolume(),
+                             resolution = (25, 25, 25))
     if annotation isa Tuple
         annotation = annotation[1]
     end
     rsp = reference_space.ReferenceSpace(tree, annotation, resolution)
 end
 
-function buildstructuremask(id, referencespace=buildreferencespace())
+function buildstructuremask(id, referencespace = buildreferencespace())
     referencespace.make_structure_mask([id])
 end
 
-function getstructuremeshfile(id, r=referencespacecache())
-    filename = pyconvert(String, r.get_cache_path(nothing, r.STRUCTURE_MESH_KEY, r.reference_space_key, id))
-    r.api.download_structure_mesh(id, r.reference_space_key, filename, strategy="lazy")
+function getstructuremeshfile(id, r = referencespacecache())
+    filename = pyconvert(String,
+                         r.get_cache_path(nothing, r.STRUCTURE_MESH_KEY,
+                                          r.reference_space_key, id))
+    r.api.download_structure_mesh(id, r.reference_space_key, filename, strategy = "lazy")
     return filename
 end
 
@@ -84,7 +87,7 @@ function getstructureidmap()
     D = t.get_id_acronym_map() |> Dict
 end
 
-function getstructuremesh(id, referencespace=referencespacecache(); hemisphere=:both)
+function getstructuremesh(id, referencespace = referencespacecache(); hemisphere = :both)
     m = load(getstructuremeshfile(id, referencespace))
 
     # Only take the right hemisphere, z > midpoint

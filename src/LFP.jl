@@ -365,11 +365,13 @@ function getchannellayers(session, X::LFPMatrix, cdf = getchannels(session))
 end
 function getchannellayers(session, channels, cdf = getchannels(session))
     channels = collect(channels)
+    tre = getstructuretree()
+    mp = getstructureidmap()
     function get_layer_name(acronym)
         try
-            if !contains(acronym, "VIS")
+            if !pyconvert(Bool, tre.structure_descends_from(mp[acronym], mp["Isocortex"]))
                 return 0
-            end
+            end # * ! Check that the structure is in the isocortex using the structure tree
             layer = parse(Int, match(r"\d+", acronym).match)
             if layer == 3
                 layer = 0
@@ -381,9 +383,9 @@ function getchannellayers(session, channels, cdf = getchannels(session))
     end
 
     function get_structure_ids(df, annotations)
-        x = floor.(Int, df.anterior_posterior_ccf_coordinate / 10)
-        y = floor.(Int, df.dorsal_ventral_ccf_coordinate / 10)
-        z = floor.(Int, df.left_right_ccf_coordinate / 10)
+        x = round.(Int, df.anterior_posterior_ccf_coordinate / 10)
+        y = round.(Int, df.dorsal_ventral_ccf_coordinate / 10)
+        z = round.(Int, df.left_right_ccf_coordinate / 10)
 
         x[x .< 0] .= 0
         y[y .< 0] .= 0
@@ -408,7 +410,7 @@ function getchannellayers(session, channels, cdf = getchannels(session))
                           for s in structure_ids]
     layers = [get_layer_name(acronym) for acronym in structure_acronyms]
     structure_acronyms = map(structure_acronyms) do s
-        if contains(s, "VIS")
+        if pyconvert(Bool, tre.structure_descends_from(mp[s], mp["Isocortex"]))
             while isnothing(tryparse(Float64, string(last(s))))
                 s = s[1:(end - 1)] # Truncating sublayer numbers
             end
@@ -484,7 +486,7 @@ function _getchanneldepths(cdf, channels; method = :probe)
         alldepths = surfaceposition .- cdf.probe_vertical_position # in μm
         depths = fill(NaN, size(idxs))
         depths[.!isnothing.(idxs)] = alldepths[idxs[.!isnothing.(idxs)]]
-    elseif method === :streamlines # This one only really works for the cortex. Anythign outside the cortex is a guess based on linear extrapolation.
+    elseif method === :streamlines # This one only really works for the cortex. Anything outside the cortex is a guess based on linear extrapolation.
         # Also note that this gives what seems to be a proportion in the cortex
         # https://www.dropbox.com/sh/7me5sdmyt5wcxwu/AACB2idSLV-F_QOG894NnZS2a?dl=0&preview=layer_mapping_example.py # The code used in the siegle 2021 paper
 
@@ -509,7 +511,7 @@ function _getchanneldepths(cdf, channels; method = :probe)
         #     dims(streamlines, Dim{:P})[1:10:end] |> collect,
         #     dims(streamlines, Dim{:S})[1:100:end] |> collect,
         #     streamlines.data[1:100:end, 1:100:end, 1:100:end])
-        # meshscatter!(ax, x, y, z, markersize=100, color=AN.getchanneldepths(session, channels; method=:dorsal_ventral))
+        # meshscatter!(ax, x, y, z, markersize=100, color=getchanneldepths(session, channels; method=:dorsal_ventral))
         # current_figure()
 
         df.cortical_depth .= 0.0
@@ -521,6 +523,7 @@ function _getchanneldepths(cdf, channels; method = :probe)
     end
     return depths
 end
+
 function getchanneldepths(session, probeid, X::LFPMatrix; kwargs...)
     if haskey(metadata(X), :depth) && haskey(metadata(X), :depth_method) &&
        metadata(X)[:depth_method] === method

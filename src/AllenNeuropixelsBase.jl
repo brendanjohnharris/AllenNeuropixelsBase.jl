@@ -107,7 +107,7 @@ df = loaddataframe("mydata.csv", "/path/to/my/data/")
 function loaddataframe(file, dir = datadir)::DataFrame
     CSV.File(abspath(dir, file)) |> DataFrame
 end
-export convertdataframe
+export loaddataframe
 
 include("./EcephysCache.jl")
 include("./BrainObservatory.jl")

@@ -92,6 +92,7 @@ struct Session <: AbstractSession
     end
 end
 function Session(session_id::Int; kwargs...)
+    @debug "Constructing a session from id $session_id"
     ANB.getsessiondata(session_id; kwargs...) |> Session
 end
 Session(; params...) = Session(params[:sessionid])
@@ -112,7 +113,16 @@ function ANB.getlfppath(session::Session, probeid)
     probe = ANB.getprobeobj(session, probeid)
     @assert pyconvert(Int, probe.id) == probeid
     name = probe.name
-    path = pyconvert(String, probe._lfp_meta.lfp_csd_filepath()._str)
+    try
+        path = pyconvert(String, probe._lfp_meta.lfp_csd_filepath()._str)
+    catch # Probe has no file name for some reason. Make a hacky guess
+        @warn "Malformed probe object. Guessing path"
+        path = joinpath(ANB.behaviormanifest, "visual-behavior-neuropixels-0.5.0",
+            "behavior_ecephys_sessions",
+            string(pyconvert(Int,
+                session.pyObject.metadata["ecephys_session_id"])),
+            "probe_$(name)_lfp.nwb")
+    end
 end
 
 function ANB.isinvalidtime(session::Session, probeids=getprobeids(session), times=NaN)
@@ -134,6 +144,10 @@ function ANB.getlfptimes(session::Session, probeid)
     times = f["acquisition"][stem][stem*"_data"]["timestamps"][:]
     close(f)
     return times
+end
+
+function ANB.getperformancemetrics(session::Session)
+    pyconvert(Dict, session.behavior_pyObject.get_performance_metrics())
 end
 
 function S3Session(session_id::Int, args...; kwargs...)
@@ -168,6 +182,12 @@ function getsessiontable()
     st.ecephys_structure_acronyms = st.structure_acronyms
     return st
 end
+
+function getbehaviorsessiontable()
+    st = manifest["project_metadata"]["behavior_sessions.csv"] |> url2df
+    return st
+end
+
 getunits() = manifest["project_metadata"]["units.csv"] |> url2df
 function getunitanalysismetricsbysessiontype()
     session_table = ANB.VisualBehavior.getsessiontable()
@@ -325,8 +345,7 @@ function getchangetrialtimeseries(session)
     trials = getchangetrials(session)
 
     t = trials.change_time_with_display_delay
-    vars = [
-        :go,
+    vars = [:go,
         :catch,
         :hit,
         :miss,
@@ -336,8 +355,7 @@ function getchangetrialtimeseries(session)
         :lick_latency,
         :auto_rewarded,
         :initial_image_name,
-        :change_image_name,
-    ]
+        :change_image_name]
     X = hcat([trials[:, s] for s in vars]...)
     return TimeSeries(t, vars, X)
 end

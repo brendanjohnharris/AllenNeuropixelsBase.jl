@@ -11,8 +11,9 @@ export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, sampl
        channels2depths, selectepochs, getchannellayers, getstreamlines
 
 LFPVector = AbstractDimArray{T, 1, Tuple{A}, B} where {T, A <: DimensionalData.TimeDim, B}
-LFPMatrix = AbstractDimArray{T, 2, Tuple{A, B}
-                             } where {T, A <: DimensionalData.TimeDim, B <: Dim{:channel}}
+LFPMatrix = AbstractDimArray{T, 2,
+                             Tuple{A, B}} where {T, A <: DimensionalData.TimeDim,
+                                                 B <: Dim{:channel}}
 export LFPMatrix, LFPVector # For simpler dispatch
 function dimmatrix(a::Symbol, b::Symbol)
     AbstractDimArray{T, 2, Tuple{A, B}} where {T, A <: Dim{a}, B <: Dim{b}}
@@ -175,10 +176,8 @@ function isinvalidtime(session::AbstractSession, probeids = getprobeids(session)
        isempty(session.pyObject.get_invalid_times()) # No invalid times in this session!
         return false
     end
-    intervals = [
-        session.pyObject.get_invalid_times().start_time.values,
-        session.pyObject.get_invalid_times().stop_time.values,
-    ]
+    intervals = [session.pyObject.get_invalid_times().start_time.values,
+                 session.pyObject.get_invalid_times().stop_time.values]
     intervals = [[pyconvert(Float64, intervals[1][i]), pyconvert(Float64, intervals[2][i])]
                  for i in 0:(length(intervals[1]) - 1)]
     tags = session.pyObject.get_invalid_times().tags.values
@@ -208,7 +207,7 @@ function getlfp(session::AbstractSession, probeid::Int;
         @error "Requested LFP data contains an invalid time..."
     end
     if inbrain isa Symbol || inbrain isa Real || inbrain
-        depths = getchanneldepths(session, probeid, channels)
+        depths = getchanneldepths(session, probeid, channels; method = :probe)
         if inbrain isa Real # A depth cutoff
             channels = channels[depths .> inbrain]
         elseif inbrain isa Symbol # A mode
@@ -315,7 +314,8 @@ function selectepochs(session, stimulus, epoch)
 end
 
 function formatlfp(session::AbstractSession; probeid = nothing, tol = 6,
-                   stimulus, structure, epoch = :longest, rectify = true, kwargs...)
+                   stimulus, structure, epoch = :longest, rectify = true, inbrain = 0.0,
+                   kwargs...)
     if isnothing(probeid)
         probeid = getprobe(session, structure)
     end
@@ -325,11 +325,11 @@ function formatlfp(session::AbstractSession; probeid = nothing, tol = 6,
         structure = structure[structure .!= ["root"]]
     end
     if stimulus == "all"
-        X = getlfp(session, probeid, structure; inbrain = 0.0)
+        X = getlfp(session, probeid, structure; inbrain)
     else
         epoch = selectepochs(session, stimulus, epoch)
         times = first(epoch.start_time) .. first(epoch.stop_time)
-        X = getlfp(session, probeid, structure; inbrain = 0.0, times)
+        X = getlfp(session, probeid, structure; inbrain, times)
     end
     if rectify
         X = rectifytime(X; tol)
@@ -554,6 +554,7 @@ function getchanneldepths(X::LFPMatrix; kwargs...)
         return getindex.([D], dims(X, :channel))
     else
         @assert all(haskey.((metadata(X),), (:sessionid, :probeid)))
+        @debug "Constructing a session to extract depth info"
         S = Session(metadata(X)[:sessionid])
         getchanneldepths(S, metadata(X)[:probeid], X; kwargs...)
     end

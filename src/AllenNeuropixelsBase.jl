@@ -82,6 +82,10 @@ function __init__()
     end
 
     PythonCall.pycopy!(_behaviorcache, __behaviorcache())
+
+    warnings = pyimport("warnings")
+    warnings.filterwarnings("ignore", message = ".*(Ignoring cached namespace).*")
+    warnings.filterwarnings("ignore", message = ".*(Unable to parse cre_line from full_genotype).*")
 end
 
 """

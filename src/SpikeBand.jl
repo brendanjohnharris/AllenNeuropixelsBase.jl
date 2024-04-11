@@ -36,7 +36,7 @@ end
 function getspiketimes(S::AbstractSession, structure::String)
     unitstructs = getunitmetrics(S)
     if hasproperty(unitstructs, :structure_acronym)
-        structures = unitstructs.structure_acronym .== structure
+        structures = unitstructs.structure_acronym
     else
         structures = getstructureacronyms(S, unitstructs.ecephys_channel_id)
     end

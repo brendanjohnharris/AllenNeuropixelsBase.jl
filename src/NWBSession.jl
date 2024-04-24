@@ -60,7 +60,7 @@ function py2df(p)
         if eltype(df[:, s]) <: Union{Missing, AbstractArray{Bool, 0}} # && all(length.(df[:, s]) .< 2)
             df[!, s] = [ismissing(i) ? missing : pyconvert(Bool, i[1]) for i in df[:, s]]
         end
-        if eltype(df[:, s]) <: PythonCall.Wrap.PyArray
+        if eltype(df[:, s]) <: PythonCall.PyArray
             df[!, s] = Array.(df[:, s])
         end
     end

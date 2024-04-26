@@ -32,7 +32,7 @@ function setdatadir(datadir::String)
     @info("New default datadir set; restart your Julia session for this change to take effect")
 end
 const datadir = replace(@load_preference("datadir",
-                                         joinpath(get_scratch!("Allensdk_manifest"),
+                                         joinpath(get_scratch!("allensdk_manifest"),
                                                   "data/")),
                         "\\" => "/")
 const ecephysmanifest = replace(joinpath(datadir, "Ecephys", "manifest.json"), "\\" => "/")

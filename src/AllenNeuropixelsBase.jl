@@ -6,6 +6,7 @@ using TimeseriesTools
 using Preferences
 using AllenSDK
 using Downloads
+using Scratch
 
 const brain_observatory = PythonCall.pynew()
 const stimulusmapping = PythonCall.pynew()
@@ -31,7 +32,8 @@ function setdatadir(datadir::String)
     @info("New default datadir set; restart your Julia session for this change to take effect")
 end
 const datadir = replace(@load_preference("datadir",
-                                         joinpath(pkgdir(AllenNeuropixelsBase), "data/")),
+                                         joinpath(get_scratch!("allensdk_manifest"),
+                                                  "data/")),
                         "\\" => "/")
 const ecephysmanifest = replace(joinpath(datadir, "Ecephys", "manifest.json"), "\\" => "/")
 const behaviormanifest = replace(joinpath(datadir, "Behavior"),
@@ -85,7 +87,8 @@ function __init__()
 
     warnings = pyimport("warnings")
     warnings.filterwarnings("ignore", message = ".*(Ignoring cached namespace).*")
-    warnings.filterwarnings("ignore", message = ".*(Unable to parse cre_line from full_genotype).*")
+    warnings.filterwarnings("ignore",
+                            message = ".*(Unable to parse cre_line from full_genotype).*")
 end
 
 """

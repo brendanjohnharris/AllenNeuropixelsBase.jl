@@ -332,7 +332,7 @@ function formatlfp(session::AbstractSession; probeid=nothing, tol=6,
         X = getlfp(session, probeid, structure; inbrain, times)
     end
     if rectify
-        X = rectifytime(X; tol)
+        X = TimeseriesTools.rectify(X; dims=Ti, tol)
     end
     X = addmetadata(X; stimulus, structure)
 end
@@ -683,7 +683,7 @@ end
 
 function alignlfp(session, X, ::Val{:gabors}; x_position=nothing, y_position=nothing)
     gaborstim = gaborintervals(session)
-    X = rectifytime(X)
+    X = TimeseriesTools.rectify(X; dims=Ti)
     isnothing(x_position) ||
         (gaborstim = gaborstim[Meta.parse.(gaborstim.x_position).==x_position, :])
     isnothing(y_position) ||
@@ -698,7 +698,7 @@ function alignlfp(session, X, ::Val{:static_gratings})
     stim = stimulusintervals(session, "static_gratings")
     stim = stim[stim.start_time.>minimum(dims(X, Ti)), :]
     stim = stim[stim.stop_time.<maximum(dims(X, Ti)), :]
-    X = rectifytime(X)
+    X = TimeseriesTools.rectify(X; dims=Ti)
     _X = [X[Ti(g)] for g in stim.interval]
     _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X]
     return _X
@@ -719,7 +719,7 @@ function alignlfp(session, X, ::Val{:flashes}; trail=:offset)
     else
         is = is.interval
     end
-    X = rectifytime(X)
+    X = TimeseriesTools.rectify(X; dims=Ti)
     _X = [X[Ti(g)] for g in is]
     _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X] # Catch any that are one sample too long
     return _X
@@ -736,7 +736,7 @@ function alignlfp(session, X, ::Val{:flash_250ms}; trail=:offset)
     else
         is = is.interval
     end
-    X = rectifytime(X)
+    X = TimeseriesTools.rectify(X; dims=Ti)
     _X = [X[Ti(g)] for g in is]
     _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X] # Catch any that are one sample too long
     return _X
@@ -771,7 +771,7 @@ function matchlfp(X, Y)
 end
 
 function intersectlfp(X::AbstractVector)
-    Y = [rectifytime(x; tol=10) for x in X]
+    Y = [TimeseriesTools.rectify(x; dims=Ti, tol=10) for x in X]
     ts = dims.(Y, Ti)
     ts = [Interval(extrema(t)...) for t in ts]
     int = reduce(intersect, ts)
@@ -786,7 +786,7 @@ function intersectlfp(X::AbstractVector)
 end
 
 function catlfp(X::AbstractVector)
-    Y = [rectifytime(x; tol=10) for x in X]
+    Y = [TimeseriesTools.rectify(x; dims=Ti, tol=10) for x in X]
     ts = dims.(Y, Ti)
     s = step.(ts)
     @assert all([dims(Y[1], 2)] .== dims.(Y, (2,)))

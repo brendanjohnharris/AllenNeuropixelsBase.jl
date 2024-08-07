@@ -2,6 +2,7 @@ using IntervalSets
 using HDF5
 using Statistics
 using Downloads
+import DataFrames.groupby
 
 export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, samplingperiod,
     getlfp, getlfptimes, getlfpchannels, samplingrate, WaveletMatrix, LogWaveletMatrix,
@@ -296,7 +297,10 @@ function selectepochs(session, stimulus, epoch)
     if !(epoch isa Symbol) && length(epoch) > 1
         qualifier = epoch[2]
         epoch = epoch[1]
-        _epochs = subset(epochs, qualifier => ByRow(==(true)))
+        if qualifier isa Symbol
+            qualifier = qualifier => ByRow(==(true))
+        end
+        _epochs = subset(epochs, qualifier)
         if !isempty(_epochs)
             epochs = _epochs
         else

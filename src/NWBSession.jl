@@ -1,5 +1,6 @@
 using NWBStream
 export AbstractNWBSession, NWBSession, S3Session
+import DataFrames.groupby
 
 sessionfromnwb(S) = behavior_ecephys_session.BehaviorEcephysSession.from_nwb(S)
 
@@ -13,7 +14,7 @@ mutable struct S3Session <: AbstractNWBSession
     file::Any
     io::Any
     pyObject::Any
-    function S3Session(url::String, file, io, pyObject = ())
+    function S3Session(url::String, file, io, pyObject=())
         S = new(url, file, io, pyObject)
         f(S::S3Session) = @async s3close(S.io)
         finalizer(f, S)
@@ -48,16 +49,16 @@ function py2df(p)
     df = p |> PyPandasDataFrame
     df = df |> DataFrame
     # if hasfield(p, :index)
-    index = p.index
-    index = pyconvert(Vector{Int64}, index)
+    _index = p.index
+    index = [pyconvert(Any, i) for i in _index]
     if string(p.index.name) == "None"
         df[!, "Index"] = index
     else
-        df[!, string(p.index.name)] = index
+        df[!, pyconvert(Any, p.index.name)] = index
     end
     # Manual conversions
     for s in names(df)
-        if eltype(df[:, s]) <: Union{Missing, AbstractArray{Bool, 0}} # && all(length.(df[:, s]) .< 2)
+        if eltype(df[:, s]) <: Union{Missing,AbstractArray{Bool,0}} # && all(length.(df[:, s]) .< 2)
             df[!, s] = [ismissing(i) ? missing : pyconvert(Bool, i[1]) for i in df[:, s]]
         end
         if eltype(df[:, s]) <: PythonCall.PyArray
@@ -65,7 +66,7 @@ function py2df(p)
         end
     end
     # end
-    return df[!, [end, (1:(size(df, 2) - 1))...]]
+    return df[!, [end, (1:(size(df, 2)-1))...]]
 end
 
 # getid(S::AbstractNWBSession) = pyconvert(Int, S.pyObject.behavior_ecephys_session_id)
@@ -73,7 +74,7 @@ getprobes(S::AbstractNWBSession) = py2df(S.pyObject.probes)
 getchannels(S::AbstractNWBSession) = py2df(S.pyObject.get_channels())
 
 Base.Dict(p::Py) = pyconvert(Dict, p)
-function Base.Dict(d::Dict{T, <:PythonCall.PyArray}) where {T}
+function Base.Dict(d::Dict{T,<:PythonCall.PyArray}) where {T}
     return Dict(k => pyconvert(Array{eltype(v)}, v) for (k, v) in d)
 end
 
@@ -116,10 +117,10 @@ function getlfptimes(session::AbstractNWBSession, probeid::Int, i::Interval)
     putativerange = pyconvert(Float64, timedata[0]):dt:pyconvert(Float64, timedata[-1] + dt)
     idxs = findall(putativerange .∈ (i,))
     idxs = vcat(idxs[1] .- (100:-1:1), idxs, idxs[end] .+ (1:100))
-    idxs = idxs[idxs .> 0]
-    idxs = idxs[idxs .< pyconvert(Int, timedata.len())]
+    idxs = idxs[idxs.>0]
+    idxs = idxs[idxs.<pyconvert(Int, timedata.len())]
     ts = getlfptimes(session::AbstractNWBSession, probeid::Int, idxs)
-    ts = ts[ts .∈ (i,)]
+    ts = ts[ts.∈(i,)]
 end
 
 function getepochs(S::AbstractNWBSession)
@@ -129,10 +130,10 @@ function getepochs(S::AbstractNWBSession)
 end
 
 function _getlfp(session::AbstractNWBSession, probeid::Int;
-                 channelidxs = 1:length(getlfpchannels(session, probeid)),
-                 timeidxs = 1:length(getlfptimes(session, probeid)))
+    channelidxs=1:length(getlfpchannels(session, probeid)),
+    timeidxs=1:length(getlfptimes(session, probeid)))
     @assert(any(getprobeids(session) .== probeid),
-            "Probe $probeid does not belong to session $(getid(session))")
+        "Probe $probeid does not belong to session $(getid(session))")
     _timeidxs = timeidxs .- 1 # Python sucks
     _channelidxs = channelidxs .- 1 # Python sucks
     f, io = getprobefile(session, probeid) |> NWBStream.s3open

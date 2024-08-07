@@ -343,7 +343,7 @@ end
 
 function getepochs(S::Session)
     p = S.pyObject.get_stimulus_epochs() # Why is this so slow
-    PyPandasDataFrame(p) |> DataFrame
+    py2df(p)
 end
 
 function getepochs(S::AbstractSession, stimulusname::Regex)

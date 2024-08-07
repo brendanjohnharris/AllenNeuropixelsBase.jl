@@ -40,9 +40,9 @@ function getlfpchannels(session::S3Session)
     return channels
 end
 
-# getprobes(S::AbstractNWBSession) = S.pyObject.get_probes_obj().to_dataframe() |> PyPandasDataFrame |> DataFrame
+# getprobes(S::AbstractNWBSession) = S.pyObject.get_probes_obj().to_dataframe() |> py2df
 function getsessionunits(session::AbstractNWBSession)
-    units = session.pyObject.get_units() |> PyPandasDataFrame |> DataFrame
+    units = session.pyObject.get_units() |> py2df
 end
 
 function py2df(p)

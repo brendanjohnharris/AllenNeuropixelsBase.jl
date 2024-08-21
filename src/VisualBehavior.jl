@@ -263,7 +263,7 @@ function ANB.getchannels(S::Session)
     s = py2df(S.pyObject.get_channels())
 end
 
-function getunitanalysismetrics()
+function getunitanalysismetrics(; filter_by_validity=nothing) # Extra kwarg for Visual Coding compat
     session_table = ANB.VisualBehavior.getsessiontable()
     metrics = ANB.behaviorcache().get_unit_table() |> py2df
     metrics = outerjoin(metrics, session_table; on=:ecephys_session_id)

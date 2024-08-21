@@ -1,4 +1,5 @@
 import AllenNeuropixelsBase as ANB
+using AllenNeuropixelsBase.TimeseriesTools
 using AllenNeuropixelsBase.NWBStream
 using Test
 using AllenNeuropixelsBase.DataFrames
@@ -9,13 +10,14 @@ VBSESSIONID = 1067588044
 
 begin # * Download the files
     params = (;
-              sessionid = VCSESSIONID,
-              stimulus = "spontaneous",
-              probeid = VCPROBEID,
-              structure = "VISl",
-              epoch = 1,
-              pass = (1, 100))
+        sessionid=VCSESSIONID,
+        stimulus="spontaneous",
+        probeid=VCPROBEID,
+        structure="VISl",
+        epoch=1,
+        pass=(1, 100))
     X = ANB.formatlfp(; params...)
+    @test X isa TimeseriesTools.TimeSeries
 
     session_id = VBSESSIONID
     session = ANB.Session(session_id)
@@ -26,8 +28,8 @@ begin # * Download the files
     ANB.getepochs(session)
     ANB.getprobes(session)
     ANB._getlfp(session, probeid;
-                channelidxs = 1:length(ANB.getlfpchannels(session, probeid)),
-                timeidxs = 1:length(ANB.getlfptimes(session, probeid)))
+        channelidxs=1:length(ANB.getlfpchannels(session, probeid)),
+        timeidxs=1:length(ANB.getlfptimes(session, probeid)))
 end
 
 # @testset "NWBStream.jl" begin
@@ -54,12 +56,12 @@ end
 
 @testset "Base" begin
     params = (;
-              sessionid = VCSESSIONID,
-              stimulus = "spontaneous",
-              probeid = VCPROBEID,
-              structure = "VISl",
-              epoch = 1,
-              pass = (1, 100))
+        sessionid=VCSESSIONID,
+        stimulus="spontaneous",
+        probeid=VCPROBEID,
+        structure="VISl",
+        epoch=1,
+        pass=(1, 100))
     X = ANB.formatlfp(; params...)
     @test X isa ANB.LFPMatrix
 end
@@ -98,11 +100,11 @@ using Test
 
     # Now try to get some LFP data
     ANB._getlfp(session, probeid;
-                channelidxs = 1:length(ANB.getlfpchannels(session, probeid)),
-                timeidxs = 1:length(ANB.getlfptimes(session, probeid)))
+        channelidxs=1:length(ANB.getlfpchannels(session, probeid)),
+        timeidxs=1:length(ANB.getlfptimes(session, probeid)))
 
     structure = ANB.getprobestructures(session)[probeid]
-    structure = structure[occursin.(("VIS",), string.(structure)) |> findfirst]
+    structure = structure[occursin.(("VIS",), string.(structure))|>findfirst]
 
     channels = @test_nowarn ANB.getlfpchannels(session, probeid)
     cdf = @test_nowarn ANB.getchannels(session, probeid)
@@ -110,10 +112,10 @@ using Test
     depths = @test_nowarn ANB.getchanneldepths(session, probeid, channels)
 
     ANB.getlfp(session, structure)
-    a = ANB.formatlfp(session; probeid, stimulus = "spontaneous", structure = structure,
-                      epoch = :longest)
-    b = ANB.formatlfp(; sessionid = session_id, probeid, stimulus = "spontaneous",
-                      structure = structure, epoch = :longest) # Slower, has to build the session
+    a = ANB.formatlfp(session; probeid, stimulus="spontaneous", structure=structure,
+        epoch=:longest)
+    b = ANB.formatlfp(; sessionid=session_id, probeid, stimulus="spontaneous",
+        structure=structure, epoch=:longest) # Slower, has to build the session
     @assert a == b
 
     # Test behavior data

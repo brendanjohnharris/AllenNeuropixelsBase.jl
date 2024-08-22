@@ -2,41 +2,39 @@ using Dierckx
 import TimeseriesTools: TimeSeries
 
 export getrunningspeed, smoothrunningspeed, getstimuli, stimulustrace
-export gettrials, getlicks, getrewards, geteyetracking, getrunningspeed, getbehavior, getpupilarea
+export gettrials, getlicks, getrewards, geteyetracking, getrunningspeed, getbehavior,
+       getpupilarea
 
 _getrunningspeed(S::AbstractSession) = S.pyObject.running_speed |> py2df
 geteyetracking(S::AbstractSession) = S.pyObject.eye_tracking |> py2df
 
-
-
-getrunningspeed(S::AbstractSession) = (df = _getrunningspeed(S); TimeSeries(df.timestamps, df.speed)) # ? Units
-getpupilarea(S::AbstractSession) = (df = geteyetracking(S); TimeSeries(df.timestamps, df.pupil_area))
-
-
-
+function getrunningspeed(S::AbstractSession)
+    (df = _getrunningspeed(S); TimeSeries(df.timestamps, df.speed))
+end # ? Units
+function getpupilarea(S::AbstractSession)
+    (df = geteyetracking(S); TimeSeries(df.timestamps, df.pupil_area))
+end
 
 # function getrunningspeed(S::AbstractSession)
 #     f = h5open(getfile(S), "r")
 #     r = f["processing"]["running"]["running_speed"]["data"] |> read
 #     ts = f["processing"]["running"]["running_speed"]["timestamps"] |> read
-#     return DimArray(r, (Ti(ts),); metadata=Dict(:sessionid=>getid(S)))
+#     return ToolsArray(r, (𝑡(ts),); metadata=Dict(:sessionid=>getid(S)))
 # end
 
-
-function smoothrunningspeed(S::AbstractSession; windowfunc=hanning, window=1)
+function smoothrunningspeed(S::AbstractSession; windowfunc = hanning, window = 1)
     r = getrunningspeed(S)
     ts = r.dims[1]
     dt = mean(diff(collect(r.dims[1])))
-    n = ceil(Int, window/dt/2)*2
+    n = ceil(Int, window / dt / 2) * 2
     w = windowfunc(n)
-    w = w./sum(w) # Normalized wavelet. Outputs after convolution become averages
+    w = w ./ sum(w) # Normalized wavelet. Outputs after convolution become averages
     x = DSP.conv(r, w)
-    x = x[n÷2:end-n÷2]
-    return DimArray(x, (Ti(collect(ts)),), metadata=r.metadata)
+    x = x[(n ÷ 2):(end - n ÷ 2)]
+    return ToolsArray(x, (𝑡(collect(ts)),), metadata = r.metadata)
 end
 
 smoothrunningspeed(s::Integer; kwargs...) = smoothrunningspeed(Session(s); kwargs...)
-
 
 function stimulustrace(S::AbstractSession, feature, times)
     times = Interval(extrema(times)...)
@@ -47,7 +45,7 @@ function stimulustrace(S::AbstractSession, feature, times)
     idxs = s .!= "null"
     x[idxs] .= Meta.parse.(s[idxs])
     t = mean.(zip(df.start_time, df.stop_time))
-    return DimArray(x, (Ti(t),))
+    return ToolsArray(x, (𝑡(t),))
 end
 
 function stimulustrace(S::AbstractSession, feature, times::AbstractRange)
@@ -63,22 +61,21 @@ end
 function interpmatch(x::LFPVector, ts::AbstractRange)
     f = Spline1D(collect(dims(x, Ti)), x)
     x̂ = f(ts)
-    return DimArray(x̂, (Ti(ts),); metadata=x.metadata)
+    return ToolsArray(x̂, (𝑡(ts),); metadata = x.metadata)
 end
 
 """
 Match the time indices of the first input DimVector to the second by interpolating the first
 """
 function interpmatch(x::LFPVector, y::LFPVector)
-	ts = dims(y, Ti).val.data
-	interpmatch(x, ts)
+    ts = dims(y, Ti).val.data
+    interpmatch(x, ts)
 end
 
 # function interpcorr(x::LFPVector, y::LFPVector)
 # 	x = interpmatch(x, y)
 # 	r = corspearman(x, y)
 # end
-
 
 # Consistent behaviour api
 function gettrials end

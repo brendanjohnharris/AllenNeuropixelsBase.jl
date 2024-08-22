@@ -8,23 +8,29 @@ using JSON
 import NWBStream.url2df
 
 mutable struct HybridSession <: AbstractNWBSession
-    url
-    file
-    io
-    pyObject
-    function HybridSession(url::String, file, io, pyObject=())
+    url::Any
+    file::Any
+    io::Any
+    pyObject::Any
+    function HybridSession(url::String, file, io, pyObject = ())
         S = new(url, file, io, pyObject)
         f(S::HybridSession) = @async s3close(S.io)
         finalizer(f, S)
     end
 end
 HybridSession(url::String) = (S = HybridSession(url, s3open(url)...); initialize!(S); S)
-HybridSession(session_id::Int, args...; kwargs...) = HybridSession(VisualBehavior.getsessionfile(session_id), args...; kwargs...)
+function HybridSession(session_id::Int, args...; kwargs...)
+    HybridSession(VisualBehavior.getsessionfile(session_id), args...; kwargs...)
+end
 
 # Calls to getlfp should use the streaming approach if the length is less than some amount, otherwise download the file using the allensdk
-function _loadlfp(session::HybridSession, probeid::Int; channelidxs=1:length(getlfpchannels(session, probeid)), timeidxs=1:length(getlfptimes(session, probeid)))
-    @assert(any(getprobeids(session) .== probeid), "Probe $probeid does not belong to session $(getid(session))")
-    @assert(subset(getprobes(session), :id=>ByRow(==(probeid)))[!, :has_lfp_data][1], @error "Probe $probeid does not have LFP data")
+function _loadlfp(session::HybridSession, probeid::Int;
+                  channelidxs = 1:length(getlfpchannels(session, probeid)),
+                  timeidxs = 1:length(getlfptimes(session, probeid)))
+    @assert(any(getprobeids(session) .== probeid),
+            "Probe $probeid does not belong to session $(getid(session))")
+    @assert(subset(getprobes(session), :id => ByRow(==(probeid)))[!, :has_lfp_data][1],
+            @error "Probe $probeid does not have LFP data")
     path = getlfppath(session, probeid)
     if !isfile(path)
         downloadlfp(session, probeid)
@@ -39,18 +45,22 @@ function _loadlfp(session::HybridSession, probeid::Int; channelidxs=1:length(get
     dopermute = true
     channelids = getlfpchannels(session, probeid)
     channelids = channelids[channelidxs]
-    if (channelidxs isa Union{Int64, AbstractRange{Int64}}) & (timeidxs isa Union{Int64, AbstractRange{Int64}}) # Can use HDF5 slicing
-        lfp = f["acquisition"][splitext(basename(path))[1]][splitext(basename(path))[1]*"_data"]["data"][channelidxs, timeidxs]
+    if (channelidxs isa Union{Int64, AbstractRange{Int64}}) &
+       (timeidxs isa Union{Int64, AbstractRange{Int64}}) # Can use HDF5 slicing
+        lfp = f["acquisition"][splitext(basename(path))[1]][splitext(basename(path))[1] * "_data"]["data"][channelidxs,
+                                                                                                           timeidxs]
     elseif timeidxs isa Union{Int64, AbstractRange{Int64}}
-        lfp = [f["acquisition"][splitext(basename(path))[1]][splitext(basename(path))[1]*"_data"]["data"][i, timeidxs] for i ∈ channelidxs]
+        lfp = [f["acquisition"][splitext(basename(path))[1]][splitext(basename(path))[1] * "_data"]["data"][i,
+                                                                                                            timeidxs]
+               for i in channelidxs]
         lfp = hcat(lfp...)
         dopermute = false
     else
-        lfp = read(f["acquisition"][splitext(basename(path))[1]][splitext(basename(path))[1]*"_data"]["data"])
+        lfp = read(f["acquisition"][splitext(basename(path))[1]][splitext(basename(path))[1] * "_data"]["data"])
         lfp = lfp[channelidxs, timeidxs]
     end
     if lfp isa Vector
-       lfp = reshape(lfp, 1, length(lfp))
+        lfp = reshape(lfp, 1, length(lfp))
     end
     if channelids isa Number
         channelids = [channelids]
@@ -58,13 +68,17 @@ function _loadlfp(session::HybridSession, probeid::Int; channelidxs=1:length(get
     if dopermute
         lfp = permutedims(lfp, reverse(1:ndims(lfp)))
     end
-    X = DimArray(lfp, (Ti(timedata),  Dim{:channel}(channelids)); metadata=Dict(:sessionid=>getid(session), :probeid=>probeid))
+    X = ToolsArray(lfp, (𝑡(timedata), Chan(channelids));
+                   metadata = Dict(:sessionid => getid(session), :probeid => probeid))
     close(f)
     return X
 end
 
-function _streamlfp(session::AbstractNWBSession, probeid::Int; channelidxs=1:length(getlfpchannels(session, probeid)), timeidxs=1:length(getlfptimes(session, probeid)))
-    @assert(any(getprobeids(session) .== probeid), "Probe $probeid does not belong to session $(getid(session))")
+function _streamlfp(session::AbstractNWBSession, probeid::Int;
+                    channelidxs = 1:length(getlfpchannels(session, probeid)),
+                    timeidxs = 1:length(getlfptimes(session, probeid)))
+    @assert(any(getprobeids(session) .== probeid),
+            "Probe $probeid does not belong to session $(getid(session))")
     _timeidxs = timeidxs .- 1 # Python sucks
     _channelidxs = channelidxs .- 1 # Python sucks
     f, io = getprobefile(session, probeid) |> NWBStream.s3open
@@ -82,20 +96,15 @@ function _streamlfp(session::AbstractNWBSession, probeid::Int; channelidxs=1:len
         #     slc = @py slice(first(_timeidxs), last(_timeidxs), d[1])
         #     @time @py _lfp.data[slc]
         # else
-            lfp[:, i] .= pyconvert(Vector{Float32}, _lfp.data[_timeidxs, _channelidx])
+        lfp[:, i] .= pyconvert(Vector{Float32}, _lfp.data[_timeidxs, _channelidx])
         # end
     end
     if channelids isa Number
         channelids = [channelids]
     end
-    X = DimArray(lfp, (Ti(timedata),  Dim{:channel}(channelids)))
+    X = ToolsArray(lfp, (𝑡(timedata), Chan(channelids)))
     return X
 end
-
-
-
-
-
 
 # """
 # Get the lfp data for a probe, providing *indices* for channels and times. See function below for indexing by channel ids and time values/intervals
@@ -136,7 +145,7 @@ end
 #     if dopermute
 #         lfp = permutedims(lfp, reverse(1:ndims(lfp)))
 #     end
-#     X = DimArray(lfp, (Ti(timedata),  Dim{:channel}(channelids)))
+#     X = ToolsArray(lfp, (𝑡(timedata),  Chan(channelids)))
 #     close(f)
 #     return X
 # end

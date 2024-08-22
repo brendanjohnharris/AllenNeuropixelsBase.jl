@@ -9,17 +9,8 @@ VCPROBEID = 769322751
 VBSESSIONID = 1067588044
 
 begin # * Download the files
-    params = (;
-        sessionid=VCSESSIONID,
-        stimulus="spontaneous",
-        probeid=VCPROBEID,
-        structure="VISl",
-        epoch=1,
-        pass=(1, 100))
-    X = ANB.formatlfp(; params...)
-    @test X isa TimeseriesTools.TimeSeries
 
-    session_id = VBSESSIONID
+    session_id = VCSESSIONID
     session = ANB.Session(session_id)
     ANB.getprobes(session)
     probeid = @test_nowarn ANB.getprobeids(session)[2]
@@ -27,7 +18,7 @@ begin # * Download the files
     ANB.listprobes(session)
     ANB.getepochs(session)
     ANB.getprobes(session)
-    ANB._getlfp(session, probeid;
+    LFP = ANB._getlfp(session, probeid;
         channelidxs=1:length(ANB.getlfpchannels(session, probeid)),
         timeidxs=1:length(ANB.getlfptimes(session, probeid)))
 end
@@ -64,6 +55,7 @@ end
         pass=(1, 100))
     X = ANB.formatlfp(; params...)
     @test X isa ANB.LFPMatrix
+    @test X isa TimeseriesTools.TimeSeries
 end
 
 # @testset "HybridSession" begin

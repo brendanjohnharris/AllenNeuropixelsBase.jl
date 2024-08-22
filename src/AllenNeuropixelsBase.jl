@@ -92,14 +92,6 @@ function __init__()
 end
 # * Override DimensionalData syntax for newer TimeseriesTools versions. This is local only,
 #   and we'll aim to replace all these in the near future
-using TimeseriesTools
-const Ti = TimeseriesTools.𝑡
-const X = TimeseriesTools.𝑥
-const Y = TimeseriesTools.𝑦
-const Z = TimeseriesTools.𝑧
-const DimArray = TimeseriesTools.ToolsArray
-const Dimension = TimeseriesTools.ToolsDimension
-const Dim = TimeseriesTools.TDim
 
 """
     loaddataframe(file, dir=datadir)::DataFrame
@@ -126,10 +118,16 @@ function loaddataframe(file, dir = datadir)::DataFrame
 end
 export loaddataframe
 
+DimensionalData.@dim Chan ToolsDim "Channel"
+DimensionalData.@dim Unit ToolsDim "Unit"
+DimensionalData.@dim Depth ToolsDim "Depth"
+DimensionalData.@dim LogFreq ToolsDim "Log Frequency"
+export Chan, Unit, Depth, LogFreq
+
 include("./EcephysCache.jl")
 include("./BrainObservatory.jl")
 # include("./HybridSession.jl")
-include("./SparseDimArray.jl")
+include("./SparseToolsArray.jl")
 include("./MouseConnectivityCache.jl")
 include("./Ontologies.jl")
 include("./ReferenceSpace.jl")

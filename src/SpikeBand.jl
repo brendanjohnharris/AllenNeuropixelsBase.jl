@@ -16,9 +16,9 @@ function downloadspikes(S::AbstractSession)
     return nothing
 end
 
-SpikeMatrix = SparseDimArray{T, 2,
-                             Tuple{A, B}} where {T, A <: TimeseriesTools.ToolsTimeDim,
-                                                 B <: Dim{:unit}}
+SpikeMatrix = SparseToolsArray{T, 2,
+                               Tuple{A, B}} where {T, A <: TimeseriesTools.TimeDim,
+                                                   B <: Unit}
 export SpikeMatrix
 
 function getsessionpath(session::AbstractSession)
@@ -91,12 +91,12 @@ function spikematrix(Sp::AbstractDict, bin = 1e-4; rectify = 4)
     end
     ts = tmin:bin:tmax
     spikes = spzeros(Float32, length(ts), length(units))
-    spikes = goSparseDimArray(spikes, (Ti(ts), Dim{:unit}(units)))
+    spikes = goSparseToolsArray(spikes, (𝑡(ts), Unit(units)))
     @withprogress name="spikearray" begin
         for u in eachindex(units)
             _times = Sp[units[u]]
             for t in eachindex(_times) # Hella slow
-                spikes[Ti(Near(_times[t])), Dim{:unit}(At(units[u]))] += 1
+                spikes[𝑡(Near(_times[t])), Unit(At(units[u]))] += 1
             end
             @logprogress u / length(units)
         end
@@ -115,14 +115,14 @@ function _getspikes(units, times, amplitudes, _times, bin, rectify, count)
     end
     ts = tmin:bin:tmax
     spikes = spzeros(Float32, length(ts), length(units))
-    spikes = goSparseDimArray(spikes, (Ti(ts), Dim{:unit}(units))) # SparseDimArray?
+    spikes = goSparseToolsArray(spikes, (𝑡(ts), Unit(units))) # SparseToolsArray?
     @withprogress name="spikearray" begin
         for u in eachindex(units)
             _times = times[u]
             _amplitudes = amplitudes[u]
             for t in eachindex(_times) # Hella slow
-                spikes[Ti(Near(_times[t])), Dim{:unit}(At(units[u]))] += (count ? 1 :
-                                                                          _amplitudes[t])
+                spikes[𝑡(Near(_times[t])), Unit(At(units[u]))] += (count ? 1 :
+                                                                   _amplitudes[t])
             end
             @logprogress u / length(units)
         end
@@ -155,7 +155,7 @@ end
 
 function getspikes(S, stimulus::String, structure::String; kwargs...)
     spikes = getspikes(S, stimulus; kwargs...)
-    structures = getstructureacronyms(S, dims(spikes, Dim{:unit}))
+    structures = getstructureacronyms(S, dims(spikes, Unit))
     spikes = spikes[:, findall(structures .== structure)]
 end
 

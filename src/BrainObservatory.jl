@@ -53,7 +53,7 @@ function getnaturalstimulusframes(session, times)
             frames[t] = movieframes[movieidx][frame, :, :] ./ 256
         end
     end
-    return ToolsArray(frames, (Dim{:time}(times)))
+    return ToolsArray(frames, (𝑡(times)))
 end
 
 getnaturalmovieframes = getnaturalstimulusframes
@@ -79,7 +79,7 @@ function getdriftinggratingframes(session, times)
                                            p2p_amp = df.contrast[t] |> Meta.parse)
         end
     end
-    return ToolsArray(frames, (Dim{:time}(times)))
+    return ToolsArray(frames, (𝑡(times)))
 end
 
 function getstaticgratingframes(session, times, spontaneous = false)
@@ -101,7 +101,7 @@ function getstaticgratingframes(session, times, spontaneous = false)
                                           p2p_amp = df.contrast[t] |> Meta.parse)
         end
     end
-    return ToolsArray(frames, (Dim{:time}(times)))
+    return ToolsArray(frames, (𝑡(times)))
 end
 
 function _getstimulusframes(session, times, stimulus)
@@ -121,5 +121,5 @@ function getstimulusframes(session, times)
                   for x in eachrow(epochs)]
     frames = [_getstimulusframes(session, epochtimes[x], epochs.stimulus_name[x])
               for x in 1:length(epochtimes)]
-    frames = ToolsArray(vcat(frames...), (Dim{:time}(times)))
+    frames = ToolsArray(vcat(frames...), (𝑡(times)))
 end

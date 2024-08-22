@@ -121,8 +121,8 @@ export loaddataframe
 DimensionalData.@dim Chan ToolsDim "Channel"
 DimensionalData.@dim Unit ToolsDim "Unit"
 DimensionalData.@dim Depth ToolsDim "Depth"
-DimensionalData.@dim LogFreq ToolsDim "Log Frequency"
-export Chan, Unit, Depth, LogFreq
+DimensionalData.@dim Log𝑓 ToolsDim "Log Frequency"
+export Chan, Unit, Depth, Log𝑓
 
 include("./EcephysCache.jl")
 include("./BrainObservatory.jl")

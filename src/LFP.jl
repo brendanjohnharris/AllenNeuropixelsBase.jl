@@ -28,7 +28,7 @@ export dimmatrix
 
 PSDMatrix = dimmatrix(𝑓, Chan)
 PSDVector = AbstractToolsArray{T, 1, Tuple{A}, B} where {T, A <: 𝑓, B}
-LogPSDVector = AbstractToolsArray{T, 1, Tuple{A}, B} where {T, A <: LogFreq, B}
+LogPSDVector = AbstractToolsArray{T, 1, Tuple{A}, B} where {T, A <: Log𝑓, B}
 
 duration(X::AbstractToolsArray) = diff(extrema(dims(X, Ti)) |> collect) |> first
 function samplingperiod(X::AbstractToolsArray)
@@ -41,20 +41,20 @@ end
 samplingrate(X::AbstractToolsArray) = 1 / samplingperiod(X)
 
 WaveletMatrix = dimmatrix(Ti, 𝑓) # Type for ToolsArrays containing wavelet transform info
-LogWaveletMatrix = dimmatrix(Ti, LogFreq) # Type for ToolsArrays containing wavelet transform info
+LogWaveletMatrix = dimmatrix(Ti, Log𝑓) # Type for ToolsArrays containing wavelet transform info
 export WaveletMatrix, LogWaveletMatrix
 function Base.convert(::Type{LogWaveletMatrix}, x::WaveletMatrix)
-    x = ToolsArray(x, (dims(x, Ti), LogFreq(log10.(dims(x, 𝑓))));
+    x = ToolsArray(x, (dims(x, Ti), Log𝑓(log10.(dims(x, 𝑓))));
                    metadata = metadata(x), refdims = refdims(x))
-    x = x[:, .!isinf.(dims(x, LogFreq))]
+    x = x[:, .!isinf.(dims(x, Log𝑓))]
 end
 function Base.convert(::Type{LogPSDVector}, x::PSDVector)
-    x = ToolsArray(x, (LogFreq(log10.(dims(x, 𝑓))),); metadata = metadata(x),
+    x = ToolsArray(x, (Log𝑓(log10.(dims(x, 𝑓))),); metadata = metadata(x),
                    refdims = refdims(x))
-    x = x[.!isinf.(dims(x, LogFreq))]
+    x = x[.!isinf.(dims(x, Log𝑓))]
 end
 function Base.convert(::Type{WaveletMatrix}, x::LogWaveletMatrix)
-    x = ToolsArray(x, (dims(x, Ti), 𝑓(exp10.(dims(x, LogFreq))));
+    x = ToolsArray(x, (dims(x, Ti), 𝑓(exp10.(dims(x, Log𝑓))));
                    metadata = metadata(x), refdims = refdims(x))
 end
 waveletmatrix(res::LogWaveletMatrix) = convert(WaveletMatrix, res)
@@ -169,7 +169,6 @@ function _getlfp(session::AbstractSession, probeid::Int;
     X = ToolsArray(lfp, (𝑡(timedata), Chan(channelids));
                    metadata = Dict(:sessionid => getid(session), :probeid => probeid))
     close(f)
-    Main.@infiltrate
 
     X = addchanneldepths(session, X; method = :probe)
     X = sortbydepth(session, probeid, X; method = :probe)
@@ -341,7 +340,7 @@ function formatlfp(session::AbstractSession; probeid = nothing, tol = 6,
         X = getlfp(session, probeid, structure; inbrain, times)
     end
     if rectify
-        X = TimeseriesTools.rectify(X; dims = Ti, tol)
+        X = TimeseriesTools.rectify(X; dims = 𝑡, tol)
     end
     X = addmetadata(X; stimulus, structure)
 end
@@ -782,7 +781,7 @@ function matchlfp(X, Y)
 end
 
 function intersectlfp(X::AbstractVector)
-    Y = [TimeseriesTools.rectify(x; dims = Ti, tol = 10) for x in X]
+    Y = [TimeseriesTools.rectify(x; dims = 𝑡, tol = 10) for x in X]
     ts = dims.(Y, Ti)
     ts = [Interval(extrema(t)...) for t in ts]
     int = reduce(intersect, ts)
@@ -797,7 +796,7 @@ function intersectlfp(X::AbstractVector)
 end
 
 function catlfp(X::AbstractVector)
-    Y = [TimeseriesTools.rectify(x; dims = Ti, tol = 10) for x in X]
+    Y = [TimeseriesTools.rectify(x; dims = 𝑡, tol = 10) for x in X]
     ts = dims.(Y, Ti)
     s = step.(ts)
     @assert all([dims(Y[1], 2)] .== dims.(Y, (2,)))

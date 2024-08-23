@@ -7,3 +7,5 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10584983.svg)](https://doi.org/10.5281/zenodo.10584983)
 
 This package lets you load the Allen Neuropixels data in a Julia-oriented format, using e.g. [DataFrames](https://github.com/JuliaData/DataFrames.jl) and [DimArrays](https://github.com/rafaqz/DimensionalData.jl). Can load both the 'Visual Coding' and 'Visual Behavior' datasets.
+
+Please see [AllenNeuropixels.jl](https://github.com/brendanjohnharris/AllenNeuropixels.jl), which exports all the functionality of this package and adds tools for analyzing and plotting the data.

@@ -57,7 +57,8 @@ function filetree(paths::Vector{String})
     dict_tree = Dict{String, Any}()
     for path in paths
         current_dict = dict_tree
-        components = splitpath(path)
+        components = split(path, '/')
+        filter!(!isempty, components)
         for component in components[1:(end - 1)]
             if !haskey(current_dict, component)
                 current_dict[component] = Dict{String, Any}()

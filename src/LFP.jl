@@ -11,48 +11,51 @@ export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, sampl
        gaborintervals, alignlfp, logwaveletmatrix, matchlfp, joinlfp, catlfp,
        channels2depths, selectepochs, getchannellayers, getstreamlines
 
-LFPVector = AbstractDimArray{T, 1, Tuple{A}, B} where {T, A <: DimensionalData.TimeDim, B}
-LFPMatrix = AbstractDimArray{T, 2,
-                             Tuple{A, B}} where {T, A <: DimensionalData.TimeDim,
-                                                 B <: Dim{:channel}}
+LFPVector = AbstractToolsArray{T, 1, Tuple{A},
+                               B} where {T, A <: TimeseriesTools.TimeDim, B}
+LFPMatrix = AbstractToolsArray{T, 2,
+                               Tuple{A, B}} where {T, A <: TimeseriesTools.TimeDim,
+                                                   B <: Chan}
 export LFPMatrix, LFPVector # For simpler dispatch
 function dimmatrix(a::Symbol, b::Symbol)
-    AbstractDimArray{T, 2, Tuple{A, B}} where {T, A <: Dim{a}, B <: Dim{b}}
+    AbstractToolsArray{T, 2, Tuple{A, B}} where {T, A <: Dim{a}, B <: Dim{b}}
 end
-dimmatrix(a, b::Symbol) = AbstractDimArray{T, 2, Tuple{A, B}} where {T, A <: a, B <: Dim{b}}
-dimmatrix(a, b) = AbstractDimArray{T, 2, Tuple{A, B}} where {T, A <: a, B <: b}
+function dimmatrix(a, b::Symbol)
+    AbstractToolsArray{T, 2, Tuple{A, B}} where {T, A <: a, B <: Dim{b}}
+end
+dimmatrix(a, b) = AbstractToolsArray{T, 2, Tuple{A, B}} where {T, A <: a, B <: b}
 export dimmatrix
 
-PSDMatrix = dimmatrix(Freq, :channel)
-PSDVector = AbstractDimArray{T, 1, Tuple{A}, B} where {T, A <: Freq, B}
-LogPSDVector = AbstractDimArray{T, 1, Tuple{A}, B} where {T, A <: Dim{:logfrequency}, B}
+PSDMatrix = dimmatrix(𝑓, Chan)
+PSDVector = AbstractToolsArray{T, 1, Tuple{A}, B} where {T, A <: 𝑓, B}
+LogPSDVector = AbstractToolsArray{T, 1, Tuple{A}, B} where {T, A <: Log𝑓, B}
 
-duration(X::AbstractDimArray) = diff(extrema(dims(X, Ti)) |> collect) |> first
-function samplingperiod(X::AbstractDimArray)
+duration(X::AbstractToolsArray) = diff(extrema(dims(X, Ti)) |> collect) |> first
+function samplingperiod(X::AbstractToolsArray)
     if dims(X, Ti).val.data isa AbstractRange
         step(dims(X, Ti))
     else
         mean(diff(collect(dims(X, Ti))))
     end
 end
-samplingrate(X::AbstractDimArray) = 1 / samplingperiod(X)
+samplingrate(X::AbstractToolsArray) = 1 / samplingperiod(X)
 
-WaveletMatrix = dimmatrix(Ti, Freq) # Type for DimArrays containing wavelet transform info
-LogWaveletMatrix = dimmatrix(Ti, :logfrequency) # Type for DimArrays containing wavelet transform info
+WaveletMatrix = dimmatrix(Ti, 𝑓) # Type for ToolsArrays containing wavelet transform info
+LogWaveletMatrix = dimmatrix(Ti, Log𝑓) # Type for ToolsArrays containing wavelet transform info
 export WaveletMatrix, LogWaveletMatrix
 function Base.convert(::Type{LogWaveletMatrix}, x::WaveletMatrix)
-    x = DimArray(x, (dims(x, Ti), Dim{:logfrequency}(log10.(dims(x, Freq))));
-                 metadata = metadata(x), refdims = refdims(x))
-    x = x[:, .!isinf.(dims(x, :logfrequency))]
+    x = ToolsArray(x, (dims(x, Ti), Log𝑓(log10.(dims(x, 𝑓))));
+                   metadata = metadata(x), refdims = refdims(x))
+    x = x[:, .!isinf.(dims(x, Log𝑓))]
 end
 function Base.convert(::Type{LogPSDVector}, x::PSDVector)
-    x = DimArray(x, (Dim{:logfrequency}(log10.(dims(x, Freq))),); metadata = metadata(x),
-                 refdims = refdims(x))
-    x = x[.!isinf.(dims(x, :logfrequency))]
+    x = ToolsArray(x, (Log𝑓(log10.(dims(x, 𝑓))),); metadata = metadata(x),
+                   refdims = refdims(x))
+    x = x[.!isinf.(dims(x, Log𝑓))]
 end
 function Base.convert(::Type{WaveletMatrix}, x::LogWaveletMatrix)
-    x = DimArray(x, (dims(x, Ti), Freq(exp10.(dims(x, :logfrequency))));
-                 metadata = metadata(x), refdims = refdims(x))
+    x = ToolsArray(x, (dims(x, Ti), 𝑓(exp10.(dims(x, Log𝑓))));
+                   metadata = metadata(x), refdims = refdims(x))
 end
 waveletmatrix(res::LogWaveletMatrix) = convert(WaveletMatrix, res)
 logwaveletmatrix(res::WaveletMatrix) = convert(LogWaveletMatrix, res)
@@ -163,9 +166,10 @@ function _getlfp(session::AbstractSession, probeid::Int;
     if dopermute
         lfp = permutedims(lfp, reverse(1:ndims(lfp)))
     end
-    X = DimArray(lfp, (Ti(timedata), Dim{:channel}(channelids));
-                 metadata = Dict(:sessionid => getid(session), :probeid => probeid))
+    X = ToolsArray(lfp, (𝑡(timedata), Chan(channelids));
+                   metadata = Dict(:sessionid => getid(session), :probeid => probeid))
     close(f)
+
     X = addchanneldepths(session, X; method = :probe)
     X = sortbydepth(session, probeid, X; method = :probe)
     return X
@@ -336,7 +340,7 @@ function formatlfp(session::AbstractSession; probeid = nothing, tol = 6,
         X = getlfp(session, probeid, structure; inbrain, times)
     end
     if rectify
-        X = TimeseriesTools.rectify(X; dims = Ti, tol)
+        X = TimeseriesTools.rectify(X; dims = 𝑡, tol)
     end
     X = addmetadata(X; stimulus, structure)
 end
@@ -353,10 +357,10 @@ export formatlfp
 
 function getstreamlines()
     streamlines = load(streamlinepath)
-    streamlines = DimArray(streamlines.data,
-                           (Dim{:L}(getproperty(streamlines.axes[1], :val)),
-                            Dim{:P}(getproperty(streamlines.axes[2], :val)),
-                            Dim{:S}(getproperty(streamlines.axes[3], :val))))
+    streamlines = ToolsArray(streamlines.data,
+                             (Dim{:L}(getproperty(streamlines.axes[1], :val)),
+                              Dim{:P}(getproperty(streamlines.axes[2], :val)),
+                              Dim{:S}(getproperty(streamlines.axes[3], :val))))
     return streamlines
 end
 
@@ -364,7 +368,7 @@ function getchannellayers(session, X::LFPMatrix, cdf = getchannels(session))
     if Dim{:layer} ∈ refdims(X)
         return X
     end
-    layers = getchannellayers(session, dims(X, :channel) |> collect, cdf)
+    layers = getchannellayers(session, dims(X, Chan) |> collect, cdf)
     addrefdim(X, Dim{:layer}(layers[1]))
 end
 function getchannellayers(session, channels, cdf = getchannels(session))
@@ -424,22 +428,23 @@ function getchannellayers(session, channels, cdf = getchannels(session))
     return layers, structure_acronyms
 end
 
-function getchannels(data::AbstractDimArray)
-    dims(data, :channel).val
+function getchannels(data::AbstractToolsArray)
+    dims(data, Chan).val
 end
 
-function getchanneldepths(session, d::DimensionalData.Dimension; kwargs...)
+function getchanneldepths(session, d::TimeseriesTools.ToolsDimension; kwargs...)
     getchanneldepths(session, d.val.data; kwargs...)
 end
 function addchanneldepths(session::AbstractSession, X::LFPMatrix; method = :probe,
                           kwargs...)
-    if Dim{:depth} ∈ refdims(X) && haskey(metadata(X), :depth_method) &&
+    if ((Depth ∈ refdims(X)) || any(isa.(refdims(X), [Depth]))) &&
+       haskey(metadata(X), :depth_method) &&
        metadata(X)[:depth_method] === method
         @warn "Depth information already present in this LFP matrix, rewriting"
     end
-    depths = getchanneldepths(session, dims(X, :channel); method,
+    depths = getchanneldepths(session, dims(X, Chan); method,
                               kwargs...)
-    m = Dict(c => d for (c, d) in zip(dims(X, :channel), depths))
+    m = Dict(c => d for (c, d) in zip(dims(X, Chan), depths))
     X = addmetadata(X; depths = m)
     return addmetadata(X; depthmethod = method)
 end
@@ -535,9 +540,9 @@ function getchanneldepths(session, probeid, X::LFPMatrix; kwargs...)
        metadata(X)[:depth_method] === method
         @warn "Depth information already present in this LFP matrix"
         D = metadata(X, :depth)
-        return getindex.([D], dims(X, :channel))
+        return getindex.([D], dims(X, Chan))
     else
-        channels = dims(X, Dim{:channel}) |> collect
+        channels = dims(X, Chan) |> collect
         getchanneldepths(session, probeid, channels; kwargs...)
     end
 end
@@ -546,7 +551,7 @@ function getchanneldepths(S::AbstractSession, X::LFPMatrix; kwargs...)
        metadata(X)[:depth_method] === method
         @warn "Depth information already present in this LFP matrix"
         D = metadata(X, :depth)
-        return getindex.([D], dims(X, :channel))
+        return getindex.([D], dims(X, Chan))
     else
         @assert haskey(metadata(X), :probeid)
         getchanneldepths(S, metadata(X)[:probeid], X; kwargs...)
@@ -557,7 +562,7 @@ function getchanneldepths(X::LFPMatrix; kwargs...)
        metadata(X)[:depth_method] === method
         @warn "Depth information already present in this LFP matrix"
         D = metadata(X, :depth)
-        return getindex.([D], dims(X, :channel))
+        return getindex.([D], dims(X, Chan))
     else
         @assert all(haskey.((metadata(X),), (:sessionid, :probeid)))
         @debug "Constructing a session to extract depth info"
@@ -566,33 +571,33 @@ function getchanneldepths(X::LFPMatrix; kwargs...)
     end
 end
 
-function channels2depths(session, probeid::Integer, X::AbstractDimArray, d::Integer;
+function channels2depths(session, probeid::Integer, X::AbstractToolsArray, d::Integer;
                          kwargs...)
     Y = deepcopy(X)
     _d = d
     c = dims(Y, _d) |> collect
     depths = getchanneldepths(session, probeid, c; kwargs...)
-    Y = set(Y, dims(Y, _d) => Dim{:depth}(depths))
+    Y = set(Y, dims(Y, _d) => Depth(depths))
     Y = reorder(Y, dims(Y, _d) => DimensionalData.ForwardOrdered)
     return Y
 end
-function channels2depths(session, probeids::Vector, X::AbstractDimArray, d; kwargs...)
+function channels2depths(session, probeids::Vector, X::AbstractToolsArray, d; kwargs...)
     Y = deepcopy(X)
     d = [d...]
     for (i, _d) in d
         probeid = probeids[i]
         c = dims(Y, _d) |> collect
         depths = getchanneldepths(session, probeid, c; kwargs...)
-        Y = set(Y, dims(Y, _d) => Dim{:depth}(depths))
+        Y = set(Y, dims(Y, _d) => Depth(depths))
     end
     return Y
 end
-function channels2depths(session, X::AbstractDimArray; kwargs...)
+function channels2depths(session, X::AbstractToolsArray; kwargs...)
     Y = deepcopy(X)
     probeid = X.metadata[:probeid]
-    c = dims(Y, :channel) |> collect
+    c = dims(Y, Chan) |> collect
     depths = getchanneldepths(session, probeid, c; kwargs...)
-    Y = set(Y, dims(Y, :channel) => Dim{:depth}(depths))
+    Y = set(Y, dims(Y, Chan) => Depth(depths))
     return Y
 end
 
@@ -608,22 +613,22 @@ function getunitdepths(session, probeid, units; kwargs...)
     getchanneldepths(session, probeid, channels; kwargs...)
 end
 
-getdim(X::AbstractDimArray, dim) = dims(X, dim).val
-gettimes(X::AbstractDimArray) = getdim(X, Ti)
+getdim(X::AbstractToolsArray, dim) = dims(X, dim).val
+gettimes(X::AbstractToolsArray) = getdim(X, Ti)
 
 function sortbydepth(session, channels; kwargs...)
     depths = getchanneldepths(session, channels; kwargs...)
     indices = sortperm(depths)
     return channels[indices]
 end
-function sortbydepth(session, probeid, LFP::AbstractDimArray; kwargs...)
+function sortbydepth(session, probeid, LFP::AbstractToolsArray; kwargs...)
     depths = getchanneldepths(session, LFP; kwargs...)
     indices = Array{Any}([1:size(LFP, i) for i in 1:length(size(LFP))])
-    indices[findfirst(isa.(dims(LFP), Dim{:channel}))] = sortperm(depths)
+    indices[findfirst(isa.(dims(LFP), Chan))] = sortperm(depths)
     return LFP[indices...]
 end
 
-function rectifytime(X::AbstractDimArray; tol = 6, zero = false) # tol gives significant figures for rounding
+function rectifytime(X::AbstractToolsArray; tol = 6, zero = false) # tol gives significant figures for rounding
     ts = gettimes(X)
     stp = ts |> diff |> mean
     err = ts |> diff |> std
@@ -674,13 +679,13 @@ function radialgaborseries(session, times)
     stimtable = getstimuli(session, "gabors")
     stimtable.combined_pos = sqrt.(Meta.parse.(stimtable.x_position) .^ 2 .+
                                    Meta.parse.(stimtable.y_position) .^ 2) # Radial position of the gabor stimulus
-    gaborseries = DimArray(zeros(length(times)), (Ti(times),))
+    gaborseries = ToolsArray(zeros(length(times)), (𝑡(times),))
     for pos in unique(stimtable.combined_pos)
         gabortimes = [a .. b
                       for (a, b, x) in zip(stimtable.start_time, stimtable.stop_time,
                                            stimtable.combined_pos) if x == pos]
         for ts in gabortimes
-            gaborseries[Ti(ts)] .= pos
+            gaborseries[𝑡(ts)] .= pos
         end
     end
     return gaborseries
@@ -688,14 +693,14 @@ end
 
 function alignlfp(session, X, ::Val{:gabors}; x_position = nothing, y_position = nothing)
     gaborstim = gaborintervals(session)
-    X = TimeseriesTools.rectify(X; dims = Ti)
+    X = TimeseriesTools.rectify(X; dims = 𝑡)
     isnothing(x_position) ||
         (gaborstim = gaborstim[Meta.parse.(gaborstim.x_position) .== x_position, :])
     isnothing(y_position) ||
         (gaborstim = gaborstim[Meta.parse.(gaborstim.y_position) .== y_position, :])
-    _X = [X[Ti(g)] for g in gaborstim.interval]
+    _X = [X[𝑡(g)] for g in gaborstim.interval]
     _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X] # Catch any that are one sample too long
-    # _X = DimArray(mean(collect.(_X)), (Ti(step(dims(X, Ti)):step(dims(X, Ti)):step(dims(X, Ti))*minimum(size.(_X, Ti))), dims(X, Dim{:channel})))
+    # _X = ToolsArray(mean(collect.(_X)), (𝑡(step(dims(X, Ti)):step(dims(X, Ti)):step(dims(X, Ti))*minimum(size.(_X, Ti))), dims(X, Chan)))
     return _X
 end
 
@@ -703,8 +708,8 @@ function alignlfp(session, X, ::Val{:static_gratings})
     stim = stimulusintervals(session, "static_gratings")
     stim = stim[stim.start_time .> minimum(dims(X, Ti)), :]
     stim = stim[stim.stop_time .< maximum(dims(X, Ti)), :]
-    X = TimeseriesTools.rectify(X; dims = Ti)
-    _X = [X[Ti(g)] for g in stim.interval]
+    X = TimeseriesTools.rectify(X; dims = 𝑡)
+    _X = [X[𝑡(g)] for g in stim.interval]
     _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X]
     return _X
 end
@@ -724,8 +729,8 @@ function alignlfp(session, X, ::Val{:flashes}; trail = :offset)
     else
         is = is.interval
     end
-    X = TimeseriesTools.rectify(X; dims = Ti)
-    _X = [X[Ti(g)] for g in is]
+    X = TimeseriesTools.rectify(X; dims = 𝑡)
+    _X = [X[𝑡(g)] for g in is]
     _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X] # Catch any that are one sample too long
     return _X
 end
@@ -741,8 +746,8 @@ function alignlfp(session, X, ::Val{:flash_250ms}; trail = :offset)
     else
         is = is.interval
     end
-    X = TimeseriesTools.rectify(X; dims = Ti)
-    _X = [X[Ti(g)] for g in is]
+    X = TimeseriesTools.rectify(X; dims = 𝑡)
+    _X = [X[𝑡(g)] for g in is]
     _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X] # Catch any that are one sample too long
     return _X
 end
@@ -753,7 +758,7 @@ end
 # function alignlfp(session, X, ::Val{:spontaneous})
 #     is =stimulusintervals(session, "spontaneous").interval
 #     X = rectifytime(X)
-#     _X = [X[Ti(g)] for g in is]
+#     _X = [X[𝑡(g)] for g in is]
 #     return _X
 # end
 
@@ -768,19 +773,19 @@ function matchlfp(X, Y)
     _ts = Interval(X) ∩ Interval(Y)
     ts = dims(X, Ti)
     ts = ts[last(findfirst(ts .∈ (_ts,))):last(findlast(ts .∈ (_ts,)))]
-    Y = Y[Ti(Near(ts))]
+    Y = Y[𝑡(Near(ts))]
     Y = DimensionalData.setdims(Y, ts)
-    X = X[Ti(_ts)]
+    X = X[𝑡(_ts)]
     @assert dims(X, Ti) == dims(Y, Ti)
     return (X, Y)
 end
 
 function intersectlfp(X::AbstractVector)
-    Y = [TimeseriesTools.rectify(x; dims = Ti, tol = 10) for x in X]
+    Y = [TimeseriesTools.rectify(x; dims = 𝑡, tol = 10) for x in X]
     ts = dims.(Y, Ti)
     ts = [Interval(extrema(t)...) for t in ts]
     int = reduce(intersect, ts)
-    Y = [y[Ti(int)] for y in Y]
+    Y = [y[𝑡(int)] for y in Y]
 
     ts = dims.(Y, Ti)
     s = step.(ts)
@@ -791,12 +796,12 @@ function intersectlfp(X::AbstractVector)
 end
 
 function catlfp(X::AbstractVector)
-    Y = [TimeseriesTools.rectify(x; dims = Ti, tol = 10) for x in X]
+    Y = [TimeseriesTools.rectify(x; dims = 𝑡, tol = 10) for x in X]
     ts = dims.(Y, Ti)
     s = step.(ts)
     @assert all([dims(Y[1], 2)] .== dims.(Y, (2,)))
     @assert all(s .≈ s[1])
     s = s[1]
-    Y = cat(Y..., dims = Ti)
-    set(Y, Ti => Ti(s:s:(s * size(Y, 1))))
+    Y = cat(Y..., dims = 𝑡)
+    set(Y, Ti => 𝑡(s:s:(s * size(Y, 1))))
 end

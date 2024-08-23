@@ -5,10 +5,10 @@ using IntervalSets
 import TimeseriesTools: spiketrain
 
 export downloadspikes, getspiketimes, getspikeamplitudes, formatspiketimes, spikematrix,
-    getsessionpath, SpikeMatrix, spikematrix, alignspiketimes, countspikes, fanofactor,
-    defaultfanobins, getspikes, getstructureacronyms, minspikediff, formatspikes,
-    getisis, receptivefieldfilter, getmetric, getfano, getclosestchannels,
-    getpeakchannels, getunitchannels, getspiketrains
+       getsessionpath, SpikeMatrix, spikematrix, alignspiketimes, countspikes, fanofactor,
+       defaultfanobins, getspikes, getstructureacronyms, minspikediff, formatspikes,
+       getisis, receptivefieldfilter, getmetric, getfano, getclosestchannels,
+       getpeakchannels, getunitchannels, getspiketrains
 
 function downloadspikes(S::AbstractSession)
     _ = S.pyObject.spike_times
@@ -16,14 +16,14 @@ function downloadspikes(S::AbstractSession)
     return nothing
 end
 
-SpikeMatrix = SparseDimArray{T,2,
-    Tuple{A,B}} where {T,A<:DimensionalData.TimeDim,
-    B<:Dim{:unit}}
+SpikeMatrix = SparseToolsArray{T, 2,
+                               Tuple{A, B}} where {T, A <: TimeseriesTools.TimeDim,
+                                                   B <: Unit}
 export SpikeMatrix
 
 function getsessionpath(session::AbstractSession)
     path = joinpath(datadir, "Ecephys", "session_" * string(getid(session)),
-        "session_" * string(getid(session)) * ".nwb")
+                    "session_" * string(getid(session)) * ".nwb")
 end
 
 getspiketimes(S::AbstractSession) = S.pyObject.spike_times |> Dict
@@ -41,9 +41,9 @@ function getspiketimes(S::AbstractSession, structure::String)
         structures = getstructureacronyms(S, unitstructs.ecephys_channel_id)
     end
     if hasproperty(unitstructs, :ecephys_unit_id)
-        unitids = unitstructs[structures.==structure, :].ecephys_unit_id
+        unitids = unitstructs[structures .== structure, :].ecephys_unit_id
     else
-        unitids = unitstructs[structures.==structure, :].unit_id
+        unitids = unitstructs[structures .== structure, :].unit_id
     end
     spiketimes = filter(p -> p[1] in unitids, getspiketimes(S)) |> Dict
 end
@@ -55,11 +55,11 @@ end
 
 function getspiketrains(args...; kwargs...)
     sp = getspiketimes(args...; kwargs...)
-    sp = Dict(k => spiketrain(v; metadata=Dict(:unit_id => k)) for (k, v) in sp)
+    sp = Dict(k => spiketrain(v; metadata = Dict(:unit_id => k)) for (k, v) in sp)
 end
 
-function formatspiketimes(; sessionid=757216464, structure="VISp", stimulus="gabors",
-    epoch=:longest, filter=true, kwargs...)
+function formatspiketimes(; sessionid = 757216464, structure = "VISp", stimulus = "gabors",
+                          epoch = :longest, filter = true, kwargs...)
     S = Session(sessionid)
 
     spiketimes = getspiketimes(S, structure)
@@ -82,21 +82,21 @@ end
 """
 Construct a sparse array of spike counts from a Dict of spike times
 """
-function spikematrix(Sp::AbstractDict, bin=1e-4; rectify=4)
+function spikematrix(Sp::AbstractDict, bin = 1e-4; rectify = 4)
     tmin, tmax = extrema(vcat(values(Sp)...))
     units = Sp |> keys |> collect
     if rectify > 0
-        tmax = round(tmax; digits=rectify)
-        tmin = round(tmin; digits=rectify)
+        tmax = round(tmax; digits = rectify)
+        tmin = round(tmin; digits = rectify)
     end
     ts = tmin:bin:tmax
     spikes = spzeros(Float32, length(ts), length(units))
-    spikes = goSparseDimArray(spikes, (Ti(ts), Dim{:unit}(units)))
-    @withprogress name = "spikearray" begin
+    spikes = goSparseToolsArray(spikes, (𝑡(ts), Unit(units)))
+    @withprogress name="spikearray" begin
         for u in eachindex(units)
             _times = Sp[units[u]]
             for t in eachindex(_times) # Hella slow
-                spikes[Ti(Near(_times[t])), Dim{:unit}(At(units[u]))] += 1
+                spikes[𝑡(Near(_times[t])), Unit(At(units[u]))] += 1
             end
             @logprogress u / length(units)
         end
@@ -110,19 +110,19 @@ function _getspikes(units, times, amplitudes, _times, bin, rectify, count)
     tmin = minimum(_times)
     times = [filter(∈(tmin .. tmax), t) for t in times]
     if rectify > 0
-        tmax = round(tmax; digits=rectify)
-        tmin = round(tmin; digits=rectify)
+        tmax = round(tmax; digits = rectify)
+        tmin = round(tmin; digits = rectify)
     end
     ts = tmin:bin:tmax
     spikes = spzeros(Float32, length(ts), length(units))
-    spikes = goSparseDimArray(spikes, (Ti(ts), Dim{:unit}(units))) # SparseDimArray?
-    @withprogress name = "spikearray" begin
+    spikes = goSparseToolsArray(spikes, (𝑡(ts), Unit(units))) # SparseToolsArray?
+    @withprogress name="spikearray" begin
         for u in eachindex(units)
             _times = times[u]
             _amplitudes = amplitudes[u]
             for t in eachindex(_times) # Hella slow
-                spikes[Ti(Near(_times[t])), Dim{:unit}(At(units[u]))] += (count ? 1 :
-                                                                          _amplitudes[t])
+                spikes[𝑡(Near(_times[t])), Unit(At(units[u]))] += (count ? 1 :
+                                                                   _amplitudes[t])
             end
             @logprogress u / length(units)
         end
@@ -133,8 +133,8 @@ end
 """
 We combine the spike times and spike amplitudes into one sparse array, using a given bin width.
 """
-function getspikes(S, timebounds=nothing; bin=1e-4, rectify=4, structure=nothing,
-    count=true)
+function getspikes(S, timebounds = nothing; bin = 1e-4, rectify = 4, structure = nothing,
+                   count = true)
     times = isnothing(structure) ? getspiketimes(S) : getspiketimes(S, structure)
     validunits = findvalidunits(S, keys(times))
     times = Dict(k => v for (k, v) in times if k ∈ validunits)
@@ -148,32 +148,32 @@ function getspikes(S, timebounds=nothing; bin=1e-4, rectify=4, structure=nothing
     _getspikes(units, times, amplitudes, _times, bin, rectify, count)
 end
 
-function getspikes(S, stimulus::String; n=1, kwargs...)
+function getspikes(S, stimulus::String; n = 1, kwargs...)
     timebounds = getstimulustimes(S, stimulus)[n]
     getspikes(S, timebounds; kwargs...)
 end
 
 function getspikes(S, stimulus::String, structure::String; kwargs...)
     spikes = getspikes(S, stimulus; kwargs...)
-    structures = getstructureacronyms(S, dims(spikes, Dim{:unit}))
+    structures = getstructureacronyms(S, dims(spikes, Unit))
     spikes = spikes[:, findall(structures .== structure)]
 end
 
 """
 A function to easily grab formatted spike data for a given session, using some sensible default parameters
 """
-function formatspikes(; sessionid=757216464, stimulus="gabors", structure="VISp",
-    epoch=1, bin=1e-4, kwargs...)
+function formatspikes(; sessionid = 757216464, stimulus = "gabors", structure = "VISp",
+                      epoch = 1, bin = 1e-4, kwargs...)
     sesh = Session(sessionid)
-    S = getspikes(sesh, stimulus, structure; bin, rectify=4, structure, count=true,
-        epoch)
+    S = getspikes(sesh, stimulus, structure; bin, rectify = 4, structure, count = true,
+                  epoch)
 end
 
 function getunitstructureacronyms(session::AbstractSession, units)
     unittable = getunitmetrics(session)
     acronyms = Vector{Any}(undef, size(units))
-    [acronyms[i] = notemptyfirst(unittable[unittable.unit_id.==units[i],
-        :structure_acronym]) for i in 1:length(units)]
+    [acronyms[i] = notemptyfirst(unittable[unittable.unit_id .== units[i],
+                                           :structure_acronym]) for i in 1:length(units)]
     return acronyms
 end
 
@@ -238,13 +238,13 @@ function receptivefieldfilter(am::DataFrame)
 end
 
 function receptivefieldfilter(units::AbstractVector;
-    am=AN.getunitanalysismetricsbysessiontype("brain_observatory_1.1"))
+                              am = AN.getunitanalysismetricsbysessiontype("brain_observatory_1.1"))
     am = AN.subset(am, :ecephys_unit_id, units)
     return receptivefieldfilter(am)
 end
 
-function alignspiketimes(session, X, ::Val{:flashes}; x_position=nothing,
-    y_position=nothing)
+function alignspiketimes(session, X, ::Val{:flashes}; x_position = nothing,
+                         y_position = nothing)
     stims = stimulusintervals(session, "flashes")
     intervals = stims.interval
     times = values(X)
@@ -253,14 +253,14 @@ function alignspiketimes(session, X, ::Val{:flashes}; x_position=nothing,
     for ts in times
         _ts = []
         for i in intervals
-            push!(_ts, ts[ts.∈(i,)])
+            push!(_ts, ts[ts .∈ (i,)])
         end
         push!(_times, _ts)
     end
     return Dict(units .=> _times)
 end
 
-function alignspiketimes(session, X, stimulus="flashes"; kwargs...)
+function alignspiketimes(session, X, stimulus = "flashes"; kwargs...)
     alignspiketimes(session, X, stimulus |> Symbol |> Val; kwargs...)
 end
 
@@ -288,10 +288,10 @@ function defaultfanobins(ts)
     maxwidth = (first ∘ diff ∘ collect ∘ extrema)(ts) / 10
     minwidth = max((mean ∘ diff)(ts), maxwidth / 10000)
     # spacing = minwidth
-    return 10.0 .^ range(log10(minwidth), log10(maxwidth); length=100)
+    return 10.0 .^ range(log10(minwidth), log10(maxwidth); length = 100)
 end
 
-function fanofactor(ts::AbstractVector, T::AbstractVector=defaultfanobins(ts))
+function fanofactor(ts::AbstractVector, T::AbstractVector = defaultfanobins(ts))
     (T, fanofactor.((ts,), T))
 end
 
@@ -327,7 +327,7 @@ end
 
 function findvalidunits(session, units; kwargs...)
     units = collect(units)
-    metrics = getunitanalysismetrics(session; filter_by_validity=true, kwargs...)
+    metrics = getunitanalysismetrics(session; filter_by_validity = true, kwargs...)
     check = units .∈ (metrics.ecephys_unit_id,)
     return units[check]
 end

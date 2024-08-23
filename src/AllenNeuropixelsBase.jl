@@ -90,6 +90,8 @@ function __init__()
     warnings.filterwarnings("ignore",
                             message = ".*(Unable to parse cre_line from full_genotype).*")
 end
+# * Override DimensionalData syntax for newer TimeseriesTools versions. This is local only,
+#   and we'll aim to replace all these in the near future
 
 """
     loaddataframe(file, dir=datadir)::DataFrame
@@ -116,10 +118,16 @@ function loaddataframe(file, dir = datadir)::DataFrame
 end
 export loaddataframe
 
+DimensionalData.@dim Chan ToolsDim "Channel"
+DimensionalData.@dim Unit ToolsDim "Unit"
+DimensionalData.@dim Depth ToolsDim "Depth"
+DimensionalData.@dim Log𝑓 ToolsDim "Log Frequency"
+export Chan, Unit, Depth, Log𝑓
+
 include("./EcephysCache.jl")
 include("./BrainObservatory.jl")
 # include("./HybridSession.jl")
-include("./SparseDimArray.jl")
+include("./SparseToolsArray.jl")
 include("./MouseConnectivityCache.jl")
 include("./Ontologies.jl")
 include("./ReferenceSpace.jl")

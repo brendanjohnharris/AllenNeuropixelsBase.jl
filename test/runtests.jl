@@ -26,6 +26,8 @@ begin # * Download the files
     LFP = ANB._getlfp(session, probeid;
         channelidxs=1:length(ANB.getlfpchannels(session, probeid)),
         timeidxs=1:length(ANB.getlfptimes(session, probeid)))
+    LFP = []
+    GC.gc() # Clean up for test runner
 end
 
 # @testset "NWBStream.jl" begin
@@ -61,6 +63,9 @@ end
     X = ANB.formatlfp(; params...)
     @test X isa ANB.LFPMatrix
     @test X isa TimeseriesTools.RegularTimeSeries
+
+    X = []
+    GC.gc()
 end
 
 # @testset "HybridSession" begin
@@ -100,6 +105,8 @@ end
     structure = ANB.getprobestructures(session)[probeid]
     structure = structure[occursin.(("VIS",), string.(structure))|>findfirst]
 
+    GC.gc()
+
     channels = @test_nowarn ANB.getlfpchannels(session, probeid)
     cdf = @test_nowarn ANB.getchannels(session, probeid)
     ANB._getchanneldepths(cdf, channels)
@@ -113,6 +120,9 @@ end
     b = ANB.formatlfp(; sessionid=session_id, probeid, stimulus="spontaneous",
         structure=structure, epoch=:longest) # Slower, has to build the session
     @assert a == b
+
+    x = a = b = []
+    GC.gc()
 
     # Test behavior data
     S = session

@@ -30,12 +30,12 @@ PSDMatrix = dimmatrix(𝑓, Chan)
 PSDVector = AbstractToolsArray{T, 1, Tuple{A}, B} where {T, A <: 𝑓, B}
 LogPSDVector = AbstractToolsArray{T, 1, Tuple{A}, B} where {T, A <: Log𝑓, B}
 
-duration(X::AbstractToolsArray) = diff(extrema(dims(X, Ti)) |> collect) |> first
+duration(X::AbstractToolsArray) = diff(extrema(dims(X, 𝑡)) |> collect) |> first
 function samplingperiod(X::AbstractToolsArray)
-    if dims(X, Ti).val.data isa AbstractRange
-        step(dims(X, Ti))
+    if dims(X, 𝑡).val.data isa AbstractRange
+        step(dims(X, 𝑡))
     else
-        mean(diff(collect(dims(X, Ti))))
+        mean(diff(collect(dims(X, 𝑡))))
     end
 end
 samplingrate(X::AbstractToolsArray) = 1 / samplingperiod(X)
@@ -44,7 +44,7 @@ WaveletMatrix = dimmatrix(Ti, 𝑓) # Type for ToolsArrays containing wavelet tr
 LogWaveletMatrix = dimmatrix(Ti, Log𝑓) # Type for ToolsArrays containing wavelet transform info
 export WaveletMatrix, LogWaveletMatrix
 function Base.convert(::Type{LogWaveletMatrix}, x::WaveletMatrix)
-    x = ToolsArray(x, (dims(x, Ti), Log𝑓(log10.(dims(x, 𝑓))));
+    x = ToolsArray(x, (dims(x, 𝑡), Log𝑓(log10.(dims(x, 𝑓))));
                    metadata = metadata(x), refdims = refdims(x))
     x = x[:, .!isinf.(dims(x, Log𝑓))]
 end
@@ -54,7 +54,7 @@ function Base.convert(::Type{LogPSDVector}, x::PSDVector)
     x = x[.!isinf.(dims(x, Log𝑓))]
 end
 function Base.convert(::Type{WaveletMatrix}, x::LogWaveletMatrix)
-    x = ToolsArray(x, (dims(x, Ti), 𝑓(exp10.(dims(x, Log𝑓))));
+    x = ToolsArray(x, (dims(x, 𝑡), 𝑓(exp10.(dims(x, Log𝑓))));
                    metadata = metadata(x), refdims = refdims(x))
 end
 waveletmatrix(res::LogWaveletMatrix) = convert(WaveletMatrix, res)
@@ -614,7 +614,7 @@ function getunitdepths(session, probeid, units; kwargs...)
 end
 
 getdim(X::AbstractToolsArray, dim) = dims(X, dim).val
-gettimes(X::AbstractToolsArray) = getdim(X, Ti)
+gettimes(X::AbstractToolsArray) = getdim(X, 𝑡)
 
 function sortbydepth(session, channels; kwargs...)
     depths = getchanneldepths(session, channels; kwargs...)
@@ -643,9 +643,9 @@ function rectifytime(X::AbstractToolsArray; tol = 6, zero = false) # tol gives s
             t0 = 0
         end
         ts = t0:stp:(t1 + (10000 * stp))
-        ts = ts[1:size(X, Ti)] # Should be ok?
+        ts = ts[1:size(X, 𝑡)] # Should be ok?
     end
-    @assert length(ts) == size(X, Ti)
+    @assert length(ts) == size(X, 𝑡)
     X = set(X, Ti => ts)
     if zero
         X = rebuild(X; metadata = Dict(:time => origts, pairs(metadata(X))...))
@@ -699,18 +699,18 @@ function alignlfp(session, X, ::Val{:gabors}; x_position = nothing, y_position =
     isnothing(y_position) ||
         (gaborstim = gaborstim[Meta.parse.(gaborstim.y_position) .== y_position, :])
     _X = [X[𝑡(g)] for g in gaborstim.interval]
-    _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X] # Catch any that are one sample too long
-    # _X = ToolsArray(mean(collect.(_X)), (𝑡(step(dims(X, Ti)):step(dims(X, Ti)):step(dims(X, Ti))*minimum(size.(_X, Ti))), dims(X, Chan)))
+    _X = [x[1:minimum(size.(_X, 𝑡)), :] for x in _X] # Catch any that are one sample too long
+    # _X = ToolsArray(mean(collect.(_X)), (𝑡(step(dims(X, 𝑡)):step(dims(X, 𝑡)):step(dims(X, 𝑡))*minimum(size.(_X, 𝑡))), dims(X, Chan)))
     return _X
 end
 
 function alignlfp(session, X, ::Val{:static_gratings})
     stim = stimulusintervals(session, "static_gratings")
-    stim = stim[stim.start_time .> minimum(dims(X, Ti)), :]
-    stim = stim[stim.stop_time .< maximum(dims(X, Ti)), :]
+    stim = stim[stim.start_time .> minimum(dims(X, 𝑡)), :]
+    stim = stim[stim.stop_time .< maximum(dims(X, 𝑡)), :]
     X = TimeseriesTools.rectify(X; dims = 𝑡)
     _X = [X[𝑡(g)] for g in stim.interval]
-    _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X]
+    _X = [x[1:minimum(size.(_X, 𝑡)), :] for x in _X]
     return _X
 end
 
@@ -731,7 +731,7 @@ function alignlfp(session, X, ::Val{:flashes}; trail = :offset)
     end
     X = TimeseriesTools.rectify(X; dims = 𝑡)
     _X = [X[𝑡(g)] for g in is]
-    _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X] # Catch any that are one sample too long
+    _X = [x[1:minimum(size.(_X, 𝑡)), :] for x in _X] # Catch any that are one sample too long
     return _X
 end
 function alignlfp(session, X, ::Val{:flash_250ms}; trail = :offset)
@@ -748,7 +748,7 @@ function alignlfp(session, X, ::Val{:flash_250ms}; trail = :offset)
     end
     X = TimeseriesTools.rectify(X; dims = 𝑡)
     _X = [X[𝑡(g)] for g in is]
-    _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X] # Catch any that are one sample too long
+    _X = [x[1:minimum(size.(_X, 𝑡)), :] for x in _X] # Catch any that are one sample too long
     return _X
 end
 
@@ -771,23 +771,23 @@ Adjust the times of LFP matrix Y so that they match the matrix X
 """
 function matchlfp(X, Y)
     _ts = Interval(X) ∩ Interval(Y)
-    ts = dims(X, Ti)
+    ts = dims(X, 𝑡)
     ts = ts[last(findfirst(ts .∈ (_ts,))):last(findlast(ts .∈ (_ts,)))]
     Y = Y[𝑡(Near(ts))]
     Y = DimensionalData.setdims(Y, ts)
     X = X[𝑡(_ts)]
-    @assert dims(X, Ti) == dims(Y, Ti)
+    @assert dims(X, 𝑡) == dims(Y, 𝑡)
     return (X, Y)
 end
 
 function intersectlfp(X::AbstractVector)
     Y = [TimeseriesTools.rectify(x; dims = 𝑡, tol = 10) for x in X]
-    ts = dims.(Y, Ti)
+    ts = dims.(Y, 𝑡)
     ts = [Interval(extrema(t)...) for t in ts]
     int = reduce(intersect, ts)
     Y = [y[𝑡(int)] for y in Y]
 
-    ts = dims.(Y, Ti)
+    ts = dims.(Y, 𝑡)
     s = step.(ts)
     # @assert all(s .== s[1])
     length = minimum(size.(Y, 1))
@@ -797,7 +797,7 @@ end
 
 function catlfp(X::AbstractVector)
     Y = [TimeseriesTools.rectify(x; dims = 𝑡, tol = 10) for x in X]
-    ts = dims.(Y, Ti)
+    ts = dims.(Y, 𝑡)
     s = step.(ts)
     @assert all([dims(Y[1], 2)] .== dims.(Y, (2,)))
     @assert all(s .≈ s[1])

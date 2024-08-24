@@ -54,12 +54,12 @@ function stimulustrace(S::AbstractSession, feature, times::AbstractRange)
 end
 
 function stimulustrace(S::AbstractSession, feature, x::LFPVector)
-    t = dims(x, Ti)
+    t = dims(x, 𝑡)
     stimulustrace(S, feature, t)
 end
 
 function interpmatch(x::LFPVector, ts::AbstractRange)
-    f = Spline1D(collect(dims(x, Ti)), x)
+    f = Spline1D(collect(dims(x, 𝑡)), x)
     x̂ = f(ts)
     return ToolsArray(x̂, (𝑡(ts),); metadata = x.metadata)
 end
@@ -68,7 +68,7 @@ end
 Match the time indices of the first input DimVector to the second by interpolating the first
 """
 function interpmatch(x::LFPVector, y::LFPVector)
-    ts = dims(y, Ti).val.data
+    ts = dims(y, 𝑡).val.data
     interpmatch(x, ts)
 end
 

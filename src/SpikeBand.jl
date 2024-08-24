@@ -194,7 +194,7 @@ end
 
 function getisis(x::AbstractSparseDimVector)
     s = findnz(x |> SparseVector)[1]
-    t = dims(x, Ti) |> collect
+    t = dims(x, 𝑡) |> collect
     I = AN.ephys_features.get_isis(t, s)
     @assert I ≈ diff(t[s]) # Yeah there's this
     return I

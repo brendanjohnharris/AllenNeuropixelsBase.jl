@@ -411,8 +411,8 @@ function ANB.alignlfp(session, X, stimulus::Union{flashesset...}; trail = :chang
     X = ANB.rectifytime(X)
     _X = [X[𝑡(g)] for g in is]
     _X = _X[.!isempty.(_X)]
-    _X = [x for x in _X if size(x, Ti) > 100] # Remove short trials
-    _X = [x[1:minimum(size.(_X, Ti)), :] for x in _X] # Catch any that are one sample too long
+    _X = [x for x in _X if size(x, 𝑡) > 100] # Remove short trials
+    _X = [x[1:minimum(size.(_X, 𝑡)), :] for x in _X] # Catch any that are one sample too long
     _X = ANB.rectifytime.(_X; zero)
     @assert all(all(size.(x, 1) .== size(x[1], 1)) for x in _X)
     return _X

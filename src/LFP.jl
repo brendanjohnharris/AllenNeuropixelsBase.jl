@@ -646,7 +646,7 @@ function rectifytime(X::AbstractToolsArray; tol = 6, zero = false) # tol gives s
         ts = ts[1:size(X, 𝑡)] # Should be ok?
     end
     @assert length(ts) == size(X, 𝑡)
-    X = set(X, Ti => ts)
+    X = set(X, 𝑡 => ts)
     if zero
         X = rebuild(X; metadata = Dict(:time => origts, pairs(metadata(X))...))
     end
@@ -803,5 +803,5 @@ function catlfp(X::AbstractVector)
     @assert all(s .≈ s[1])
     s = s[1]
     Y = cat(Y..., dims = 𝑡)
-    set(Y, Ti => 𝑡(s:s:(s * size(Y, 1))))
+    set(Y, 𝑡 => 𝑡(s:s:(s * size(Y, 1))))
 end

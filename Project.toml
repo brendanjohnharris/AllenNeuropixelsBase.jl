@@ -1,7 +1,7 @@
 name = "AllenNeuropixelsBase"
 uuid = "0b0e28cf-a3af-44db-8bea-1c4507018d35"
 authors = ["brendanjohnharris <brendanjohnharris@gmail.com> and contributors"]
-version = "0.3.1"
+version = "0.4.0"
 
 [deps]
 AllenSDK = "9d22b198-c11d-497b-9ac7-6add78eade21"
@@ -29,7 +29,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 TimeseriesTools = "380cddd1-6ef2-46ca-b087-e7151fb095ff"
 
 [compat]
-AllenSDK = "0.2"
+AllenSDK = "0.3"
 CSV = "0.9, 0.10"
 Colors = "0.10, 0.11, 0.12"
 CondaPkg = "0.2.14"

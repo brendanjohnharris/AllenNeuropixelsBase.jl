@@ -12,9 +12,9 @@ export LFPVector, LFPMatrix, PSDMatrix, PSDVector, LogPSDVector, duration, sampl
        channels2depths, selectepochs, getchannellayers, getstreamlines
 
 LFPVector = AbstractToolsArray{T, 1, Tuple{A},
-                               B} where {T, A <: TimeseriesTools.TimeDim, B}
+                               B} where {T, A <: DimensionalData.TimeDim, B}
 LFPMatrix = AbstractToolsArray{T, 2,
-                               Tuple{A, B}} where {T, A <: TimeseriesTools.TimeDim,
+                               Tuple{A, B}} where {T, A <: DimensionalData.TimeDim,
                                                    B <: Chan}
 export LFPMatrix, LFPVector # For simpler dispatch
 function dimmatrix(a::Symbol, b::Symbol)
@@ -340,7 +340,7 @@ function formatlfp(session::AbstractSession; probeid = nothing, tol = 6,
         X = getlfp(session, probeid, structure; inbrain, times)
     end
     if rectify
-        X = TimeseriesTools.rectify(X; dims = 𝑡, tol)
+        X = TimeseriesBase.rectify(X; dims = 𝑡, tol)
     end
     X = addmetadata(X; stimulus, structure)
 end
@@ -432,7 +432,7 @@ function getchannels(data::AbstractToolsArray)
     dims(data, Chan).val
 end
 
-function getchanneldepths(session, d::TimeseriesTools.ToolsDimension; kwargs...)
+function getchanneldepths(session, d::TimeseriesBase.ToolsDimension; kwargs...)
     getchanneldepths(session, d.val.data; kwargs...)
 end
 function addchanneldepths(session::AbstractSession, X::LFPMatrix; method = :probe,
@@ -693,7 +693,7 @@ end
 
 function alignlfp(session, X, ::Val{:gabors}; x_position = nothing, y_position = nothing)
     gaborstim = gaborintervals(session)
-    X = TimeseriesTools.rectify(X; dims = 𝑡)
+    X = TimeseriesBase.rectify(X; dims = 𝑡)
     isnothing(x_position) ||
         (gaborstim = gaborstim[Meta.parse.(gaborstim.x_position) .== x_position, :])
     isnothing(y_position) ||
@@ -708,7 +708,7 @@ function alignlfp(session, X, ::Val{:static_gratings})
     stim = stimulusintervals(session, "static_gratings")
     stim = stim[stim.start_time .> minimum(dims(X, 𝑡)), :]
     stim = stim[stim.stop_time .< maximum(dims(X, 𝑡)), :]
-    X = TimeseriesTools.rectify(X; dims = 𝑡)
+    X = TimeseriesBase.rectify(X; dims = 𝑡)
     _X = [X[𝑡(g)] for g in stim.interval]
     _X = [x[1:minimum(size.(_X, 𝑡)), :] for x in _X]
     return _X
@@ -729,7 +729,7 @@ function alignlfp(session, X, ::Val{:flashes}; trail = :offset)
     else
         is = is.interval
     end
-    X = TimeseriesTools.rectify(X; dims = 𝑡)
+    X = TimeseriesBase.rectify(X; dims = 𝑡)
     _X = [X[𝑡(g)] for g in is]
     _X = [x[1:minimum(size.(_X, 𝑡)), :] for x in _X] # Catch any that are one sample too long
     return _X
@@ -746,7 +746,7 @@ function alignlfp(session, X, ::Val{:flash_250ms}; trail = :offset)
     else
         is = is.interval
     end
-    X = TimeseriesTools.rectify(X; dims = 𝑡)
+    X = TimeseriesBase.rectify(X; dims = 𝑡)
     _X = [X[𝑡(g)] for g in is]
     _X = [x[1:minimum(size.(_X, 𝑡)), :] for x in _X] # Catch any that are one sample too long
     return _X
@@ -781,7 +781,7 @@ function matchlfp(X, Y)
 end
 
 function intersectlfp(X::AbstractVector)
-    Y = [TimeseriesTools.rectify(x; dims = 𝑡, tol = 10) for x in X]
+    Y = [TimeseriesBase.rectify(x; dims = 𝑡, tol = 10) for x in X]
     ts = dims.(Y, 𝑡)
     ts = [Interval(extrema(t)...) for t in ts]
     int = reduce(intersect, ts)
@@ -796,7 +796,7 @@ function intersectlfp(X::AbstractVector)
 end
 
 function catlfp(X::AbstractVector)
-    Y = [TimeseriesTools.rectify(x; dims = 𝑡, tol = 10) for x in X]
+    Y = [TimeseriesBase.rectify(x; dims = 𝑡, tol = 10) for x in X]
     ts = dims.(Y, 𝑡)
     s = step.(ts)
     @assert all([dims(Y[1], 2)] .== dims.(Y, (2,)))

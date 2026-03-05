@@ -2,7 +2,7 @@ using SparseArrays
 using ProgressLogging
 using Random
 using IntervalSets
-import TimeseriesTools: spiketrain
+import TimeseriesBase: spiketrain
 
 export downloadspikes, getspiketimes, getspikeamplitudes, formatspiketimes, spikematrix,
        getsessionpath, SpikeMatrix, spikematrix, alignspiketimes, countspikes, fanofactor,
@@ -17,7 +17,7 @@ function downloadspikes(S::AbstractSession)
 end
 
 SpikeMatrix = SparseToolsArray{T, 2,
-                               Tuple{A, B}} where {T, A <: TimeseriesTools.TimeDim,
+                               Tuple{A, B}} where {T, A <: DimensionalData.TimeDim,
                                                    B <: Unit}
 export SpikeMatrix
 

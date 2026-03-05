@@ -12,7 +12,7 @@ using Downloads
 using JSON
 using HDF5
 using IntervalSets
-using TimeseriesTools
+using TimeseriesBase
 import NWBStream.url2df
 import ..AllenNeuropixelsBase: AbstractNWBSession, AbstractSession, py2df
 import DataFrames.groupby
@@ -317,15 +317,15 @@ end
 
 function stimulustimeseries(session; blanks = true)
     df = ANB.getstimuli(session)
-    x = TimeseriesTools.TimeSeries(df.start_time, df.image_name)
-    y = TimeseriesTools.TimeSeries(df.end_time, df.image_name)
+    x = TimeseriesBase.TimeSeries(df.start_time, df.image_name)
+    y = TimeseriesBase.TimeSeries(df.end_time, df.image_name)
     if blanks
-        xx = TimeseriesTools.TimeSeries(times(x) .- 1 / 1250, fill("blank", length(x)))
-        yy = TimeseriesTools.TimeSeries(times(y) .+ 1 / 1250, fill("blank", length(y)))
-        x = TimeseriesTools.interlace(x, xx)
-        y = TimeseriesTools.interlace(y, yy)
+        xx = TimeseriesBase.TimeSeries(times(x) .- 1 / 1250, fill("blank", length(x)))
+        yy = TimeseriesBase.TimeSeries(times(y) .+ 1 / 1250, fill("blank", length(y)))
+        x = TimeseriesBase.interlace(x, xx)
+        y = TimeseriesBase.interlace(y, yy)
     end
-    TimeseriesTools.interlace(x, y)
+    TimeseriesBase.interlace(x, y)
 end
 
 function getchangetrials(session)

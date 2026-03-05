@@ -1,5 +1,5 @@
 import AllenNeuropixelsBase as ANB
-using AllenNeuropixelsBase.TimeseriesTools
+using AllenNeuropixelsBase.TimeseriesBase
 using AllenNeuropixelsBase.NWBStream
 using Test
 using AllenNeuropixelsBase.DataFrames
@@ -24,8 +24,8 @@ begin # * Download the files
     @test all(channels .∈ [cdf.id])
 
     LFP = ANB._getlfp(session, probeid;
-        channelidxs=1:length(ANB.getlfpchannels(session, probeid)),
-        timeidxs=1:length(ANB.getlfptimes(session, probeid)))
+                      channelidxs = 1:length(ANB.getlfpchannels(session, probeid)),
+                      timeidxs = 1:length(ANB.getlfptimes(session, probeid)))
     LFP = []
     GC.gc() # Clean up for test runner
 end
@@ -54,15 +54,15 @@ end
 
 @testset "Format LFP" begin
     params = (;
-        sessionid=VCSESSIONID,
-        stimulus="spontaneous",
-        probeid=VCPROBEID,
-        structure="VISl",
-        epoch=:longest,
-        pass=(1, 100))
+              sessionid = VCSESSIONID,
+              stimulus = "spontaneous",
+              probeid = VCPROBEID,
+              structure = "VISl",
+              epoch = :longest,
+              pass = (1, 100))
     X = ANB.formatlfp(; params...)
     @test X isa ANB.LFPMatrix
-    @test X isa TimeseriesTools.RegularTimeSeries
+    @test X isa TimeseriesBase.RegularTimeSeries
 
     X = []
     GC.gc()
@@ -99,11 +99,12 @@ end
 
     # Now try to get some LFP data
     @test ANB._getlfp(session, probeid;
-        channelidxs=1:length(ANB.getlfpchannels(session, probeid)),
-        timeidxs=1:length(ANB.getlfptimes(session, probeid))) isa TimeseriesTools.IrregularTimeSeries
+                      channelidxs = 1:length(ANB.getlfpchannels(session, probeid)),
+                      timeidxs = 1:length(ANB.getlfptimes(session, probeid))) isa
+          TimeseriesBase.IrregularTimeSeries
 
     structure = ANB.getprobestructures(session)[probeid]
-    structure = structure[occursin.(("VIS",), string.(structure))|>findfirst]
+    structure = structure[occursin.(("VIS",), string.(structure)) |> findfirst]
 
     GC.gc()
 
@@ -113,12 +114,12 @@ end
     depths = @test_nowarn ANB.getchanneldepths(session, probeid, channels)
 
     x = ANB.getlfp(session, structure)
-    @test x isa TimeseriesTools.IrregularTimeSeries
-    @test x isa TimeseriesTools.MultivariateTimeSeries
-    a = ANB.formatlfp(session; probeid, stimulus="spontaneous", structure=structure,
-        epoch=:longest)
-    b = ANB.formatlfp(; sessionid=session_id, probeid, stimulus="spontaneous",
-        structure=structure, epoch=:longest) # Slower, has to build the session
+    @test x isa TimeseriesBase.IrregularTimeSeries
+    @test x isa TimeseriesBase.MultivariateTimeSeries
+    a = ANB.formatlfp(session; probeid, stimulus = "spontaneous", structure = structure,
+                      epoch = :longest)
+    b = ANB.formatlfp(; sessionid = session_id, probeid, stimulus = "spontaneous",
+                      structure = structure, epoch = :longest) # Slower, has to build the session
     @assert a == b
 
     x = a = b = []

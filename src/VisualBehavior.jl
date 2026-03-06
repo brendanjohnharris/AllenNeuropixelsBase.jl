@@ -317,11 +317,11 @@ end
 
 function stimulustimeseries(session; blanks = true)
     df = ANB.getstimuli(session)
-    x = TimeseriesBase.TimeSeries(df.start_time, df.image_name)
-    y = TimeseriesBase.TimeSeries(df.end_time, df.image_name)
+    x = TimeseriesBase.Timeseries(df.start_time, df.image_name)
+    y = TimeseriesBase.Timeseries(df.end_time, df.image_name)
     if blanks
-        xx = TimeseriesBase.TimeSeries(times(x) .- 1 / 1250, fill("blank", length(x)))
-        yy = TimeseriesBase.TimeSeries(times(y) .+ 1 / 1250, fill("blank", length(y)))
+        xx = TimeseriesBase.Timeseries(times(x) .- 1 / 1250, fill("blank", length(x)))
+        yy = TimeseriesBase.Timeseries(times(y) .+ 1 / 1250, fill("blank", length(y)))
         x = TimeseriesBase.interlace(x, xx)
         y = TimeseriesBase.interlace(y, yy)
     end
@@ -361,7 +361,7 @@ function getchangetrialtimeseries(session)
         :initial_image_name,
         :change_image_name]
     X = hcat([trials[:, s] for s in vars]...)
-    return TimeSeries(t, vars, X)
+    return Timeseries(t, vars, X)
 end
 
 flashesset = (Val{:Natural_Images_Lum_Matched_set_ophys_G_2019},

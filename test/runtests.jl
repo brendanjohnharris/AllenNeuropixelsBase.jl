@@ -62,7 +62,7 @@ end
               pass = (1, 100))
     X = ANB.formatlfp(; params...)
     @test X isa ANB.LFPMatrix
-    @test X isa TimeseriesBase.RegularTimeSeries
+    @test X isa TimeseriesBase.RegularTimeseries
 
     X = []
     GC.gc()
@@ -101,7 +101,7 @@ end
     @test ANB._getlfp(session, probeid;
                       channelidxs = 1:length(ANB.getlfpchannels(session, probeid)),
                       timeidxs = 1:length(ANB.getlfptimes(session, probeid))) isa
-          TimeseriesBase.IrregularTimeSeries
+          TimeseriesBase.IrregularTimeseries
 
     structure = ANB.getprobestructures(session)[probeid]
     structure = structure[occursin.(("VIS",), string.(structure)) |> findfirst]
@@ -114,8 +114,8 @@ end
     depths = @test_nowarn ANB.getchanneldepths(session, probeid, channels)
 
     x = ANB.getlfp(session, structure)
-    @test x isa TimeseriesBase.IrregularTimeSeries
-    @test x isa TimeseriesBase.MultivariateTimeSeries
+    @test x isa TimeseriesBase.IrregularTimeseries
+    @test x isa TimeseriesBase.MultivariateTimeseries
     a = ANB.formatlfp(session; probeid, stimulus = "spontaneous", structure = structure,
                       epoch = :longest)
     b = ANB.formatlfp(; sessionid = session_id, probeid, stimulus = "spontaneous",

@@ -1,4 +1,4 @@
-import TimeseriesBase: TimeSeries
+import TimeseriesBase: Timeseries
 
 export getrunningspeed, smoothrunningspeed, getstimuli, stimulustrace
 export gettrials, getlicks, getrewards, geteyetracking, getrunningspeed, getbehavior,
@@ -8,10 +8,10 @@ _getrunningspeed(S::AbstractSession) = S.pyObject.running_speed |> py2df
 geteyetracking(S::AbstractSession) = S.pyObject.eye_tracking |> py2df
 
 function getrunningspeed(S::AbstractSession)
-    (df = _getrunningspeed(S); TimeSeries(df.timestamps, df.speed))
+    (df = _getrunningspeed(S); Timeseries(df.timestamps, df.speed))
 end # ? Units
 function getpupilarea(S::AbstractSession)
-    (df = geteyetracking(S); TimeSeries(df.timestamps, df.pupil_area))
+    (df = geteyetracking(S); Timeseries(df.timestamps, df.pupil_area))
 end
 
 # function getrunningspeed(S::AbstractSession)

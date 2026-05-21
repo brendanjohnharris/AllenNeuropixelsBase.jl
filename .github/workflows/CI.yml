@@ -33,6 +33,16 @@ jobs:
             arch: x86
     steps:
       - uses: actions/checkout@v4
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}

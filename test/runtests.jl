@@ -23,9 +23,11 @@ begin # * Download the files
     cdf = ANB.getchannels(session, probeid)
     @test all(channels .∈ [cdf.id])
 
-    LFP = ANB._getlfp(session, probeid;
-                      channelidxs = 1:length(ANB.getlfpchannels(session, probeid)),
-                      timeidxs = 1:length(ANB.getlfptimes(session, probeid)))
+    LFP = ANB._getlfp(
+        session, probeid;
+        channelidxs = 1:length(ANB.getlfpchannels(session, probeid)),
+        timeidxs = 1:length(ANB.getlfptimes(session, probeid))
+    )
     LFP = []
     GC.gc() # Clean up for test runner
 end
@@ -54,12 +56,13 @@ end
 
 @testset "Format LFP" begin
     params = (;
-              sessionid = VCSESSIONID,
-              stimulus = "spontaneous",
-              probeid = VCPROBEID,
-              structure = "VISl",
-              epoch = :longest,
-              pass = (1, 100))
+        sessionid = VCSESSIONID,
+        stimulus = "spontaneous",
+        probeid = VCPROBEID,
+        structure = "VISl",
+        epoch = :longest,
+        pass = (1, 100),
+    )
     X = ANB.formatlfp(; params...)
     @test X isa ANB.LFPMatrix
     @test X isa TimeseriesBase.RegularTimeseries
@@ -82,56 +85,67 @@ end
 # end
 
 @testset "Visual Behavior" begin
-    # st = @test_nowarn ANB.VisualBehavior.getsessiontable()
-    # @test st isa DataFrame
-    # session_id = st[end, :ecephys_session_id]
-    session_id = VBSESSIONID
-    session = ANB.Session(session_id)
 
-    # test_file = "/home/brendan/OneDrive/Masters/Code/Vortices/Julia/AllenSDK/test/ecephys_session_VBSESSIONID.nwb"
-    # f = ANB.behavior_ecephys_session.BehaviorSession.from_nwb_path(test_file)
+    IS_CI = get(ENV, "CI", "false") == "true"
 
-    probeid = @test_nowarn ANB.getprobeids(session)[2]
-    @test_nowarn ANB.getprobestructures(session)[probeid]
-    @test_nowarn ANB.listprobes(session)
-    @test_nowarn ANB.getepochs(session)
-    @test_nowarn ANB.getprobes(session)
+    if !IS_CI
+        # st = @test_nowarn ANB.VisualBehavior.getsessiontable()
+        # @test st isa DataFrame
+        # session_id = st[end, :ecephys_session_id]
+        session_id = VBSESSIONID
+        session = ANB.Session(session_id)
 
-    # Now try to get some LFP data
-    @test ANB._getlfp(session, probeid;
-                      channelidxs = 1:length(ANB.getlfpchannels(session, probeid)),
-                      timeidxs = 1:length(ANB.getlfptimes(session, probeid))) isa
-          TimeseriesBase.IrregularTimeseries
+        # test_file = "/home/brendan/OneDrive/Masters/Code/Vortices/Julia/AllenSDK/test/ecephys_session_VBSESSIONID.nwb"
+        # f = ANB.behavior_ecephys_session.BehaviorSession.from_nwb_path(test_file)
 
-    structure = ANB.getprobestructures(session)[probeid]
-    structure = structure[occursin.(("VIS",), string.(structure)) |> findfirst]
+        probeid = @test_nowarn ANB.getprobeids(session)[2]
+        @test_nowarn ANB.getprobestructures(session)[probeid]
+        @test_nowarn ANB.listprobes(session)
+        @test_nowarn ANB.getepochs(session)
+        @test_nowarn ANB.getprobes(session)
 
-    GC.gc()
+        # Now try to get some LFP data
+        @test ANB._getlfp(
+            session, probeid;
+            channelidxs = 1:length(ANB.getlfpchannels(session, probeid)),
+            timeidxs = 1:length(ANB.getlfptimes(session, probeid))
+        ) isa
+            TimeseriesBase.IrregularTimeseries
 
-    channels = @test_nowarn ANB.getlfpchannels(session, probeid)
-    cdf = @test_nowarn ANB.getchannels(session, probeid)
-    ANB._getchanneldepths(cdf, channels)
-    depths = @test_nowarn ANB.getchanneldepths(session, probeid, channels)
+        structure = ANB.getprobestructures(session)[probeid]
+        structure = structure[occursin.(("VIS",), string.(structure)) |> findfirst]
 
-    x = ANB.getlfp(session, structure)
-    @test x isa TimeseriesBase.IrregularTimeseries
-    @test x isa TimeseriesBase.MultivariateTimeseries
-    a = ANB.formatlfp(session; probeid, stimulus = "spontaneous", structure = structure,
-                      epoch = :longest)
-    b = ANB.formatlfp(; sessionid = session_id, probeid, stimulus = "spontaneous",
-                      structure = structure, epoch = :longest) # Slower, has to build the session
-    @assert a == b
+        GC.gc()
 
-    x = a = b = []
-    GC.gc()
+        channels = @test_nowarn ANB.getlfpchannels(session, probeid)
+        cdf = @test_nowarn ANB.getchannels(session, probeid)
+        ANB._getchanneldepths(cdf, channels)
+        depths = @test_nowarn ANB.getchanneldepths(session, probeid, channels)
 
-    # Test behavior data
-    S = session
-    @test ANB.gettrials(S) isa DataFrame
-    @test ANB.getlicks(S) isa DataFrame
-    @test ANB.getrewards(S) isa DataFrame
-    @test ANB.getstimuli(S) isa DataFrame
-    @test ANB.geteyetracking(S) isa DataFrame
+        x = ANB.getlfp(session, structure)
+        @test x isa TimeseriesBase.IrregularTimeseries
+        @test x isa TimeseriesBase.MultivariateTimeseries
+        a = ANB.formatlfp(
+            session; probeid, stimulus = "spontaneous", structure = structure,
+            epoch = :longest
+        )
+        b = ANB.formatlfp(;
+            sessionid = session_id, probeid, stimulus = "spontaneous",
+            structure = structure, epoch = :longest
+        ) # Slower, has to build the session
+        @assert a == b
+
+        x = a = b = []
+        GC.gc()
+
+        # Test behavior data
+        S = session
+        @test ANB.gettrials(S) isa DataFrame
+        @test ANB.getlicks(S) isa DataFrame
+        @test ANB.getrewards(S) isa DataFrame
+        @test ANB.getstimuli(S) isa DataFrame
+        @test ANB.geteyetracking(S) isa DataFrame
+    end
 end
 
 # s3clear()

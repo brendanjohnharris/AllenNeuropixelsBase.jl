@@ -438,8 +438,8 @@ end
 function addchanneldepths(session::AbstractSession, X::LFPMatrix; method = :probe,
                           kwargs...)
     if ((Depth ∈ refdims(X)) || any(isa.(refdims(X), [Depth]))) &&
-       haskey(metadata(X), :depth_method) &&
-       metadata(X)[:depth_method] === method
+       haskey(metadata(X), :depthmethod) &&
+       metadata(X)[:depthmethod] === method
         @warn "Depth information already present in this LFP matrix, rewriting"
     end
     depths = getchanneldepths(session, dims(X, Chan); method,
@@ -535,40 +535,44 @@ function _getchanneldepths(cdf, channels; method = :probe)
     return depths
 end
 
-function getchanneldepths(session, probeid, X::LFPMatrix; kwargs...)
-    if haskey(metadata(X), :depth) && haskey(metadata(X), :depth_method) &&
-       metadata(X)[:depth_method] === method
-        @warn "Depth information already present in this LFP matrix"
-        D = metadata(X, :depth)
-        return getindex.([D], dims(X, Chan))
-    else
-        channels = dims(X, Chan) |> collect
-        getchanneldepths(session, probeid, channels; kwargs...)
-    end
+"""
+    _cacheddepths(X::LFPMatrix, method)
+
+Depths cached in `X`'s metadata by [`addchanneldepths`](@ref), returned in the array's current `Chan`
+lookup order, or `nothing` if `X` carries no cache for `method`.
+
+The keys read here must match the ones `addchanneldepths` writes. They did not: it writes `:depths`
+and `:depthmethod`, while the lookups tested `:depth` and `:depth_method`, so the cache was never
+hit. The guard also compared against an undefined `method`, which would have thrown had the first
+two tests ever passed.
+"""
+function _cacheddepths(X::LFPMatrix, method)
+    md = metadata(X)
+    (haskey(md, :depths) && haskey(md, :depthmethod) && md[:depthmethod] === method) ||
+        return nothing
+    D = md[:depths]
+    return [D[c] for c in lookup(X, Chan)] # follows the lookup, so it survives any permutation
 end
-function getchanneldepths(S::AbstractSession, X::LFPMatrix; kwargs...)
-    if haskey(metadata(X), :depth) && haskey(metadata(X), :depth_method) &&
-       metadata(X)[:depth_method] === method
-        @warn "Depth information already present in this LFP matrix"
-        D = metadata(X, :depth)
-        return getindex.([D], dims(X, Chan))
-    else
-        @assert haskey(metadata(X), :probeid)
-        getchanneldepths(S, metadata(X)[:probeid], X; kwargs...)
-    end
+
+function getchanneldepths(session, probeid, X::LFPMatrix; method = :probe, kwargs...)
+    depths = _cacheddepths(X, method)
+    isnothing(depths) || return depths
+    channels = dims(X, Chan) |> collect
+    getchanneldepths(session, probeid, channels; method, kwargs...)
 end
-function getchanneldepths(X::LFPMatrix; kwargs...)
-    if haskey(metadata(X), :depth) && haskey(metadata(X), :depth_method) &&
-       metadata(X)[:depth_method] === method
-        @warn "Depth information already present in this LFP matrix"
-        D = metadata(X, :depth)
-        return getindex.([D], dims(X, Chan))
-    else
-        @assert all(haskey.((metadata(X),), (:sessionid, :probeid)))
-        @debug "Constructing a session to extract depth info"
-        S = Session(metadata(X)[:sessionid])
-        getchanneldepths(S, metadata(X)[:probeid], X; kwargs...)
-    end
+function getchanneldepths(S::AbstractSession, X::LFPMatrix; method = :probe, kwargs...)
+    depths = _cacheddepths(X, method)
+    isnothing(depths) || return depths
+    @assert haskey(metadata(X), :probeid)
+    getchanneldepths(S, metadata(X)[:probeid], X; method, kwargs...)
+end
+function getchanneldepths(X::LFPMatrix; method = :probe, kwargs...)
+    depths = _cacheddepths(X, method)
+    isnothing(depths) || return depths
+    @assert all(haskey.((metadata(X),), (:sessionid, :probeid)))
+    @debug "Constructing a session to extract depth info"
+    S = Session(metadata(X)[:sessionid])
+    getchanneldepths(S, metadata(X)[:probeid], X; method, kwargs...)
 end
 
 function channels2depths(session, probeid::Integer, X::AbstractToolsArray, d::Integer;
@@ -621,11 +625,31 @@ function sortbydepth(session, channels; kwargs...)
     indices = sortperm(depths)
     return channels[indices]
 end
+"""
+    sortbydepth(LFP::AbstractToolsArray, depths::AbstractVector)
+
+Permute `LFP` along its `Chan` dimension so that channels run from the surface downwards, given
+each channel's depth in the array's current `Chan` lookup order.
+
+The data and the lookup are permuted together, explicitly. An earlier implementation splatted an
+`Array{Any}` of indices into `getindex`, which permuted the lookup but left the data in place; every
+LFP the package returned was then mirrored against its own channel labels, since `_getlfp` calls
+this on every read.
+"""
+function sortbydepth(LFP::AbstractToolsArray, depths::AbstractVector)
+    d = findfirst(isa.(dims(LFP), Chan))
+    isnothing(d) && error("`LFP` has no `Chan` dimension to sort by depth")
+    size(LFP, d) == length(depths) ||
+        error("Got $(length(depths)) depths for $(size(LFP, d)) channels")
+    perm = sortperm(collect(depths))
+    perm == 1:length(perm) && return LFP # already surface-to-depth; nothing to do
+    data = copy(selectdim(parent(LFP), d, perm))
+    chan = rebuild(dims(LFP, d), collect(lookup(LFP, d))[perm])
+    ds = ntuple(i -> i == d ? chan : dims(LFP, i), ndims(LFP))
+    return rebuild(LFP; data, dims = DimensionalData.format(ds, data))
+end
 function sortbydepth(session, probeid, LFP::AbstractToolsArray; kwargs...)
-    depths = getchanneldepths(session, LFP; kwargs...)
-    indices = Array{Any}([1:size(LFP, i) for i in 1:length(size(LFP))])
-    indices[findfirst(isa.(dims(LFP), Chan))] = sortperm(depths)
-    return LFP[indices...]
+    return sortbydepth(LFP, getchanneldepths(session, LFP; kwargs...))
 end
 
 function rectifytime(X::AbstractToolsArray; tol = 6, zero = false) # tol gives significant figures for rounding

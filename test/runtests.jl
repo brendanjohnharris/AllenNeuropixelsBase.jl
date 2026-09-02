@@ -54,6 +54,45 @@ end
 
 # end
 
+@testset "sortbydepth keeps data with its labels" begin
+    # Allen channel ids descend as cortical depth increases, so sorting by depth is a real
+    # permutation of the channel axis. It must move the data and the lookup together; a previous
+    # implementation moved only the lookup, mirroring every LFP against its own channel labels.
+    ids = [40, 30, 20, 10]
+    X = ToolsArray(Float64.(reshape(1:12, 3, 4)), (𝑡(1:3), ANB.Chan(ids)))
+    ownsamples(Y) = all(parent(Y)[:, j] == parent(X)[:, findfirst(==(c), ids)]
+                        for (j, c) in enumerate(collect(lookup(Y, ANB.Chan))))
+
+    Y = ANB.sortbydepth(X, [4.0, 3.0, 2.0, 1.0])   # deepest channel first: a full reversal
+    @test collect(lookup(Y, ANB.Chan)) == reverse(ids)
+    @test ownsamples(Y)
+
+    Z = ANB.sortbydepth(X, [2.0, 4.0, 1.0, 3.0])   # not a reversal, so order alone cannot pass
+    @test collect(lookup(Z, ANB.Chan)) == [20, 40, 10, 30]
+    @test ownsamples(Z)
+
+    @test ANB.sortbydepth(X, [1.0, 2.0, 3.0, 4.0]) === X   # already sorted: untouched
+    @test_throws ErrorException ANB.sortbydepth(X, [1.0, 2.0])
+end
+
+@testset "cached channel depths" begin
+    # `addchanneldepths` writes `:depths`/`:depthmethod`; the readers used to test `:depth`/
+    # `:depth_method` against an undefined `method`, so the cache was dead code.
+    ids = [40, 30, 20, 10]
+    X = ToolsArray(Float64.(reshape(1:12, 3, 4)), (𝑡(1:3), ANB.Chan(ids));
+                   metadata = Dict(:depths => Dict(40 => 4.0, 30 => 3.0, 20 => 2.0, 10 => 1.0),
+                                   :depthmethod => :probe))
+    @test ANB.getchanneldepths(X; method = :probe) == [4.0, 3.0, 2.0, 1.0]
+
+    Y = ANB.sortbydepth(X, ANB.getchanneldepths(X; method = :probe))
+    @test collect(lookup(Y, ANB.Chan)) == [10, 20, 30, 40]
+    @test ANB.getchanneldepths(Y; method = :probe) == [1.0, 2.0, 3.0, 4.0] # follows the lookup
+
+    @test ANB._cacheddepths(X, :streamlines) === nothing # a different method must not reuse it
+    @test ANB._cacheddepths(ToolsArray(Float64.(reshape(1:12, 3, 4)),
+                                       (𝑡(1:3), ANB.Chan(ids))), :probe) === nothing
+end
+
 @testset "Format LFP" begin
     params = (;
         sessionid = VCSESSIONID,
@@ -68,6 +107,32 @@ end
     @test X isa TimeseriesBase.RegularTimeseries
 
     X = []
+    GC.gc()
+end
+
+@testset "LFP columns match the NWB file" begin
+    # The only reference that does not go through the read pipeline is the file. The
+    # ElectricalSeries electrode region is the identity, so data row r belongs to the electrode
+    # `getlfpchannels(...)[r]`. Asking for an ascending, contiguous run of channels is what used to
+    # trigger the mirror, since it takes the range/hyperslab path and a non-trivial depth sort.
+    probeid = VCPROBEID
+    fileids = ANB.getlfpchannels(session, probeid)
+    ts = ANB.getlfptimes(session, probeid)
+    rows = 1:min(24, length(fileids))
+    tidx = (length(ts) ÷ 2):(length(ts) ÷ 2 + 999)
+    X = ANB.getlfp(session, probeid; channels = fileids[rows],
+                   times = ts[first(tidx)] .. ts[last(tidx)])
+    Z = ANB.h5open(ANB.getlfppath(session, probeid)) do f
+        r = "probe_$(probeid)_lfp"
+        f["acquisition"][r][r * "_data"]["data"][rows, tidx]
+    end
+    A = parent(X)
+    m = min(size(A, 1), size(Z, 2))
+    @test length(lookup(X, ANB.Chan)) == length(rows)
+    @test all(A[1:m, j] ≈ Z[findfirst(==(c), fileids[rows]), 1:m]
+              for (j, c) in enumerate(collect(lookup(X, ANB.Chan))))
+
+    X = Z = A = []
     GC.gc()
 end
 

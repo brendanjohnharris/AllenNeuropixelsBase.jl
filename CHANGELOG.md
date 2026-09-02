@@ -1,8 +1,5 @@
 # Changelog
 
-## v0.5.1
-- Fixed depth ordering for Dimensional Data v0.30+
-
 ## v0.5.0
 
 - Switched from `TimeseriesTools` to `TimeseriesBase` dependency.

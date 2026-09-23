@@ -49,6 +49,14 @@ export setdatadir, datadir, ecephysmanifest, brainobservatorymanifest,
 
 const streamlinepath = abspath(referencespacemanifest, "../laplacian_10.nrrd")
 
+"""
+    visual_cortex_svg()
+
+Path to an SVG schematic of mouse visual cortex areas.
+"""
+visual_cortex_svg() = pkgdir(@__MODULE__, "assets", "visual_cortex.svg")
+export visual_cortex_svg
+
 function __init__()
     PythonCall.pycopy!(brain_observatory, pyimport("allensdk.brain_observatory"))
     PythonCall.pycopy!(stimulus_info, pyimport("allensdk.brain_observatory.stimulus_info"))

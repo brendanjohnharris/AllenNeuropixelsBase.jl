@@ -1,6 +1,6 @@
 name = "AllenNeuropixelsBase"
 uuid = "0b0e28cf-a3af-44db-8bea-1c4507018d35"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["brendanjohnharris <brendanjohnharris@gmail.com> and contributors"]
 
 [deps]
@@ -46,5 +46,5 @@ ProgressLogging = "0.1"
 PythonCall = "0.9"
 Scratch = "1.2"
 Statistics = "1.10"
-TimeseriesBase = "0.2"
+TimeseriesBase = "0.2, 0.3"
 julia = "1.10"

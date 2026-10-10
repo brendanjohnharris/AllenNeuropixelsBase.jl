@@ -7,7 +7,10 @@
 - Removed `Log𝑓` dim export (kept `Chan`, `Unit`, `Depth`).
 - `Session(::AbstractSession)` identity constructor added.
 - Fixed unit metrics for Visual Coding sessions.
-- Bumped compat: `AllenSDK 0.4`, `DimensionalData 0.30`, `HDF5 0.17`, `Colors 0.13`, `GeometryBasics 0.5`, `JSON 1`, `julia 1.10`.
+- Fixed `sortbydepth` for DimensionalData 0.30: data now moves with its channel labels (previously only the lookup was permuted). Versions with DimensionalData <= 0.29 were unaffected.
+- Added the visual-cortex SVG asset used for brain-region plots.
+- Requires AllenSDK 0.4.2, whose h5py keeps its own HDF5. With AllenSDK 0.4.1, precompilation could fail (`undefined symbol: H5FD_subfiling_init`) and reading an NWB file that allensdk held open failed.
+- Bumped compat: `AllenSDK 0.4.2`, `DimensionalData 0.30`, `HDF5 0.17`, `Colors 0.13`, `GeometryBasics 0.5`, `JSON 1`, `TimeseriesBase 0.3`, `CSV 1`, `julia 1.10`.
 
 ## v0.4.0
 

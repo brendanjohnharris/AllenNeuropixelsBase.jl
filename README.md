@@ -10,3 +10,9 @@
 This package lets you load the Allen Neuropixels data in a Julia-oriented format, using e.g. [DataFrames](https://github.com/JuliaData/DataFrames.jl) and [DimArrays](https://github.com/rafaqz/DimensionalData.jl). Can load both the 'Visual Coding' and 'Visual Behavior' datasets.
 
 Please see [AllenNeuropixels.jl](https://github.com/brendanjohnharris/AllenNeuropixels.jl), which exports all the functionality of this package and adds tools for analyzing and plotting the data.
+
+Python access to the Allen SDK comes from [AllenSDK.jl](https://github.com/brendanjohnharris/AllenSDK.jl), which installs its own Python environment on first use; streaming of the Visual Behavior NWB files from S3 comes from [NWBStream.jl](https://github.com/brendanjohnharris/NWBStream.jl).
+
+```julia
+using Pkg; Pkg.add("AllenNeuropixelsBase")
+```

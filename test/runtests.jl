@@ -93,6 +93,17 @@ end
                                        (𝑡(1:3), ANB.Chan(ids))), :probe) === nothing
 end
 
+@testset "reopen a file h5py holds open" begin
+    # h5py must not share HDF5.jl's libhdf5: a shared library refuses a second open with different access properties.
+    path = tempname() * ".h5"
+    ANB.HDF5.h5write(path, "x", [1, 2, 3])
+    pyfile = ANB.AllenSDK.h5py.File(path, "r")
+    f = ANB.HDF5.h5open(path)
+    @test read(f["x"]) == [1, 2, 3]
+    close(f)
+    pyfile.close()
+end
+
 @testset "Format LFP" begin
     params = (;
         sessionid = VCSESSIONID,

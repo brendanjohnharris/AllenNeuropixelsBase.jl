@@ -538,13 +538,9 @@ end
 """
     _cacheddepths(X::LFPMatrix, method)
 
-Depths cached in `X`'s metadata by [`addchanneldepths`](@ref), returned in the array's current `Chan`
-lookup order, or `nothing` if `X` carries no cache for `method`.
-
-The keys read here must match the ones `addchanneldepths` writes. They did not: it writes `:depths`
-and `:depthmethod`, while the lookups tested `:depth` and `:depth_method`, so the cache was never
-hit. The guard also compared against an undefined `method`, which would have thrown had the first
-two tests ever passed.
+Depths cached in `X`'s metadata by `addchanneldepths`, in the array's current `Chan` lookup
+order, or `nothing` if `X` carries no cache for `method`. The keys must match the ones
+`addchanneldepths` writes.
 """
 function _cacheddepths(X::LFPMatrix, method)
     md = metadata(X)

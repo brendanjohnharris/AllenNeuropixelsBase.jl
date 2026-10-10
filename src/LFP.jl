@@ -40,8 +40,8 @@ function samplingperiod(X::AbstractToolsArray)
 end
 samplingrate(X::AbstractToolsArray) = 1 / samplingperiod(X)
 
-WaveletMatrix = dimmatrix(Ti, 𝑓) # Type for ToolsArrays containing wavelet transform info
-LogWaveletMatrix = dimmatrix(Ti, Log𝑓) # Type for ToolsArrays containing wavelet transform info
+WaveletMatrix = dimmatrix(Union{𝑡, Ti}, 𝑓) # Type for ToolsArrays containing wavelet transform info; Ti kept so existing dispatch still matches
+LogWaveletMatrix = dimmatrix(Union{𝑡, Ti}, Log𝑓) # Type for ToolsArrays containing wavelet transform info
 export WaveletMatrix, LogWaveletMatrix
 function Base.convert(::Type{LogWaveletMatrix}, x::WaveletMatrix)
     x = ToolsArray(x, (dims(x, 𝑡), Log𝑓(log10.(dims(x, 𝑓))));

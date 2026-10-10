@@ -93,6 +93,16 @@ end
                                        (𝑡(1:3), ANB.Chan(ids))), :probe) === nothing
 end
 
+@testset "wavelet matrices on 𝑡" begin
+    # Every producer builds wavelet output on 𝑡, so the aliases must accept it.
+    w = ToolsArray(rand(4, 3), (𝑡(0.0:0.1:0.3), 𝑓([1.0, 10.0, 100.0])))
+    @test w isa ANB.WaveletMatrix
+    l = convert(ANB.LogWaveletMatrix, w)
+    @test l isa ANB.LogWaveletMatrix
+    @test collect(lookup(l, ANB.Log𝑓)) ≈ [0.0, 1.0, 2.0]
+    @test convert(ANB.WaveletMatrix, l) ≈ w
+end
+
 @testset "reopen a file h5py holds open" begin
     # h5py must not share HDF5.jl's libhdf5: a shared library refuses a second open with different access properties.
     path = tempname() * ".h5"

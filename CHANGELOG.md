@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.1
+
+- `WaveletMatrix` and `LogWaveletMatrix` accept the `𝑡` dimension that wavelet transforms produce (they previously required `Ti`, so no wavelet output matched them). `Ti` is still accepted.
+
 ## v0.5.0
 
 - Switched from `TimeseriesTools` to `TimeseriesBase` dependency.

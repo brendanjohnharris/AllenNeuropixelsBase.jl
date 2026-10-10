@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.2
+
+- `stimulustrace` is no longer exported. It was removed in 0.5.0, so the export pointed at nothing.
+- Fixed a docstring cross-reference that failed documentation builds that include this package's docstrings.
+
 ## v0.5.1
 
 - `WaveletMatrix` and `LogWaveletMatrix` accept any `TimeDim`, as `LFPVector` and `LFPMatrix` do. They previously required `Ti`, so the `𝑡`-indexed output of wavelet transforms never matched them.

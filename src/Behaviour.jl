@@ -1,6 +1,6 @@
 import TimeseriesBase: Timeseries
 
-export getrunningspeed, smoothrunningspeed, getstimuli, stimulustrace
+export getrunningspeed, smoothrunningspeed, getstimuli
 export gettrials, getlicks, getrewards, geteyetracking, getrunningspeed, getbehavior,
        getpupilarea
 

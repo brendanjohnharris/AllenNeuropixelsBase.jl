@@ -40,11 +40,11 @@ function samplingperiod(X::AbstractToolsArray)
 end
 samplingrate(X::AbstractToolsArray) = 1 / samplingperiod(X)
 
-WaveletMatrix = dimmatrix(Union{𝑡, Ti}, 𝑓) # Type for ToolsArrays containing wavelet transform info; Ti kept so existing dispatch still matches
-LogWaveletMatrix = dimmatrix(Union{𝑡, Ti}, Log𝑓) # Type for ToolsArrays containing wavelet transform info
+WaveletMatrix = dimmatrix(DimensionalData.TimeDim, 𝑓) # Type for ToolsArrays containing wavelet transform info
+LogWaveletMatrix = dimmatrix(DimensionalData.TimeDim, Log𝑓) # Type for ToolsArrays containing wavelet transform info
 export WaveletMatrix, LogWaveletMatrix
 function Base.convert(::Type{LogWaveletMatrix}, x::WaveletMatrix)
-    x = ToolsArray(x, (dims(x, 𝑡), Log𝑓(log10.(dims(x, 𝑓))));
+    x = ToolsArray(x, (dims(x, 1), Log𝑓(log10.(dims(x, 𝑓))));
                    metadata = metadata(x), refdims = refdims(x))
     x = x[:, .!isinf.(dims(x, Log𝑓))]
 end
@@ -54,7 +54,7 @@ function Base.convert(::Type{LogPSDVector}, x::PSDVector)
     x = x[.!isinf.(dims(x, Log𝑓))]
 end
 function Base.convert(::Type{WaveletMatrix}, x::LogWaveletMatrix)
-    x = ToolsArray(x, (dims(x, 𝑡), 𝑓(exp10.(dims(x, Log𝑓))));
+    x = ToolsArray(x, (dims(x, 1), 𝑓(exp10.(dims(x, Log𝑓))));
                    metadata = metadata(x), refdims = refdims(x))
 end
 waveletmatrix(res::LogWaveletMatrix) = convert(WaveletMatrix, res)

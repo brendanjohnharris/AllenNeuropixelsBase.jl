@@ -93,14 +93,20 @@ end
                                        (𝑡(1:3), ANB.Chan(ids))), :probe) === nothing
 end
 
-@testset "wavelet matrices on 𝑡" begin
-    # Every producer builds wavelet output on 𝑡, so the aliases must accept it.
+@testset "wavelet matrices on any time dimension" begin
+    # Wavelet output is built on 𝑡, but the aliases accept any TimeDim, as LFPVector does
     w = ToolsArray(rand(4, 3), (𝑡(0.0:0.1:0.3), 𝑓([1.0, 10.0, 100.0])))
     @test w isa ANB.WaveletMatrix
     l = convert(ANB.LogWaveletMatrix, w)
     @test l isa ANB.LogWaveletMatrix
     @test collect(lookup(l, ANB.Log𝑓)) ≈ [0.0, 1.0, 2.0]
     @test convert(ANB.WaveletMatrix, l) ≈ w
+
+    v = ToolsArray(rand(4, 3), (ANB.Ti(0.0:0.1:0.3), 𝑓([1.0, 10.0, 100.0]))) # any TimeDim
+    @test v isa ANB.WaveletMatrix
+    lv = convert(ANB.LogWaveletMatrix, v)
+    @test dims(lv, 1) isa ANB.Ti
+    @test convert(ANB.WaveletMatrix, lv) ≈ v
 end
 
 @testset "reopen a file h5py holds open" begin

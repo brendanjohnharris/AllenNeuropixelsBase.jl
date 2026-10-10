@@ -2,7 +2,7 @@
 
 ## v0.5.1
 
-- `WaveletMatrix` and `LogWaveletMatrix` accept the `𝑡` dimension that wavelet transforms produce (they previously required `Ti`, so no wavelet output matched them). `Ti` is still accepted.
+- `WaveletMatrix` and `LogWaveletMatrix` accept any `TimeDim`, as `LFPVector` and `LFPMatrix` do. They previously required `Ti`, so the `𝑡`-indexed output of wavelet transforms never matched them.
 
 ## v0.5.0
 
